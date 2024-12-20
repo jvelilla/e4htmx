@@ -3,11 +3,11 @@ note
 	date: "$Date$"
 	revision: "$Revision$"
 class
-    ESX
+    STRING_TEMPLATE
 
 feature -- Access
 
-    esx (a_template: STRING; a_variables: STRING_TABLE [ANY]): STRING
+    interpolate (a_template: STRING; a_variables: STRING_TABLE [ANY]): STRING
             -- Interpolate variables into template string
         local
             l_result: STRING

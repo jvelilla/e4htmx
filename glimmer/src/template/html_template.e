@@ -1,5 +1,5 @@
 note
-	description: "HTML templating system using ESX for variable interpolation"
+	description: "HTML templating system using STRING_TEMPLATE for variable interpolation"
 	date: "$Date$"
 	revision: "$Revision$"
 
@@ -7,7 +7,7 @@ class
 	HTML_TEMPLATE
 
 inherit
-	ESX
+	STRING_TEMPLATE
 
 create
 	make

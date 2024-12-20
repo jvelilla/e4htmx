@@ -79,7 +79,7 @@ feature -- Test routines
 			assert ("file_template_rendered", l_result.same_string ("Hello, John!"))
 
 				-- Clean up
-			create l_file.make ("test_template.html")
+			create l_file.make_with_name ("test_template.html")
 			if l_file.exists then
 				l_file.delete
 			end
@@ -229,11 +229,11 @@ feature -- Test routines
 				l_result.same_string ("<header>Welcome, John!</header><main>Content</main><footer>Copyright 2024</footer>"))
 
 				-- Clean up
-			create l_header_file.make ("header.html")
+			create l_header_file.make_with_name ("header.html")
 			if l_header_file.exists then
 				l_header_file.delete
 			end
-			create l_footer_file.make ("footer.html")
+			create l_footer_file.make_with_name ("footer.html")
 			if l_footer_file.exists then
 				l_footer_file.delete
 			end
@@ -314,12 +314,12 @@ feature -- Test routines
 			assert ("if_else_false", l_result.same_string ("Please log in"))
 
 				-- Test truthy values
-			l_template.set_variable ("count", 1)
-			l_result := l_template.render ("{{if count}}Has items{{else}}Empty{{end}}")
+			l_template.set_variable ("l_count", 1)
+			l_result := l_template.render ("{{if l_count}}Has items{{else}}Empty{{end}}")
 			assert ("numeric_truthy", l_result.same_string ("Has items"))
 
-			l_template.set_variable ("count", 0)
-			l_result := l_template.render ("{{if count}}Has items{{else}}Empty{{end}}")
+			l_template.set_variable ("l_count", 0)
+			l_result := l_template.render ("{{if l_count}}Has items{{else}}Empty{{end}}")
 			assert ("numeric_falsy", l_result.same_string ("Empty"))
 
 				-- Test with string values
@@ -750,7 +750,6 @@ feature -- Test routines
 			-- Test handling of reserved words as variable names
 		local
 			l_template: HTML_TEMPLATE
-			l_result: STRING
 		do
 			create l_template.make
 
@@ -770,7 +769,6 @@ feature -- Test routines
 			-- Test handling of reserved operator words as variable names
 		local
 			l_template: HTML_TEMPLATE
-			l_result: STRING
 		do
 			create l_template.make
 
