@@ -67,6 +67,12 @@ feature -- Router
 			map_uri_agent ("/table-rows", agent handle_table_rows, router.methods_GET)
 			map_uri_agent ("/dog", agent handle_add_dog_post, router.methods_POST)
 			map_uri_template_agent ("/dog/{id}", agent handle_delete_dog, router.methods_DELETE)
+			map_uri_agent ("/oob", agent handle_oob, router.methods_GET)
+			map_uri_agent ("/oob/demo", agent handle_oob_demo, router.methods_GET)
+			map_uri_agent ("/event-with-no-data", agent handle_event_with_no_data, router.methods_GET)
+			map_uri_agent ("/event-with-string", agent handle_event_with_string, router.methods_GET)
+			map_uri_agent ("/event-with-object", agent handle_event_with_object, router.methods_GET)
+			map_uri_agent ("/trigger", agent handle_trigger, router.methods_GET)
 
 			create www.make_with_path (document_root)
 			www.set_directory_index (<<"index2.html">>)
@@ -200,6 +206,153 @@ feature -- Events
 			end
 		end
 
+	handle_oob (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle request for the out-of-band demo page
+		local
+			l_html: STRING
+		do
+			l_html := oob_page
+
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			new_response (req, res, l_html)
+		end
+
+	handle_oob_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle request for the out-of-band demo response
+		local
+			l_html: STRING
+			l_esx: ESX
+			l_variables: STRING_TABLE [ANY]
+		do
+			create l_esx
+			create l_variables.make (0)
+			l_html := l_esx.esx ("[
+				<div>new 1</div>
+				<div id="target2" hx-swap-oob="true">
+					new 2
+				</div>
+				<div id="target2" hx-swap-oob="afterend">
+					<div>after 2</div>
+				</div>
+				<div hx-swap-oob="innerHTML:#target3">new 3</div>
+			]", l_variables)
+
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			new_response (req, res, l_html)
+		end
+
+	handle_event_with_no_data (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle request that triggers event1 with no data
+		local
+			h: HTTP_HEADER
+		do
+			create h.make
+			h.put_content_type_text_plain
+			h.put_header_key_value ("HX-Trigger", "event1")
+			h.put_content_length (17)
+			h.put_current_date
+
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			res.put_header_text (h.string)
+			res.put_string ("dispatched event1")
+		end
+
+	handle_event_with_string (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle request that triggers event2 with string data
+		local
+			h: HTTP_HEADER
+			l_trigger: STRING
+		do
+				-- Create JSON string for the trigger
+			l_trigger := "{%"event2%":%"some string%"}"
+
+			create h.make
+			h.put_content_type_text_plain
+			h.put_header_key_value ("HX-Trigger", l_trigger)
+			h.put_content_length (17)
+			h.put_current_date
+
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			res.put_header_text (h.string)
+			res.put_string ("dispatched event2")
+		end
+
+	handle_event_with_object (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle request that triggers event3 with object data
+		local
+			h: HTTP_HEADER
+			l_trigger: STRING
+		do
+				-- Create JSON string for the trigger with nested object
+			l_trigger := "{%"event3%":{%"foo%":1,%"bar%":2}}"
+
+			create h.make
+			h.put_content_type_text_plain
+			h.put_header_key_value ("HX-Trigger", l_trigger)
+			h.put_content_length (17)
+			h.put_current_date
+
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			res.put_header_text (h.string)
+			res.put_string ("dispatched event3")
+		end
+
+	handle_trigger (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle request for the event triggering demo page
+		local
+			l_html: STRING
+			l_esx: ESX
+			l_variables: STRING_TABLE [ANY]
+		do
+			create l_esx
+			create l_variables.make (0)
+			l_html := l_esx.esx ("[
+				<html>
+				  <head>
+				    <title>htmx Event Triggering</title>
+				    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+				    <script>
+				      function handleEvent1(event) {
+				        const {value} = event.detail;
+				        alert('got event1 with ' + value);
+				      }
+				      function handleEvent2(event) {
+				        const {value} = event.detail;
+				        alert('got event2 with ' + JSON.stringify(value));
+				      }
+				      function handleEvent3(event) {
+				        const {detail} = event;
+				        // detail.elt holds a reference to the element that
+				        // triggered the request.  JSON.stringify encounters a
+				        // circular reference if that is included, so we remove it.
+				        delete detail.elt;
+				        alert('got event3 with ' + JSON.stringify(detail));
+				      }
+				    </script>
+				  </head>
+				  <body
+				    hx-on:event1="handleEvent1(event)"
+				    hx-on:event2="handleEvent2(event)"
+				    hx-on:event3="handleEvent3(event)"
+				  >
+				    <button hx-get="/event-with-no-data" hx-target="#content">
+				      Event w/ no data
+				    </button>
+				    <button hx-get="/event-with-string" hx-target="#content">
+				      Event w/ string
+				    </button>
+				    <button hx-get="/event-with-object" hx-target="#content">
+				      Event w/ object
+				    </button>
+				    <div id="content"></div>
+				  </body>
+				</html>
+			]", l_variables)
+
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			new_response (req, res, l_html)
+		end
+
 feature -- Database Operations
 
 	add_dog (a_name: STRING; a_breed: STRING): DOG
@@ -234,7 +387,7 @@ feature -- HTML Generation
 			l_variables.put (a_dog.name, "name")
 			l_variables.put (a_dog.breed, "breed")
 			l_variables.put (a_dog.id, "id")
-			
+
 			Result := l_esx.esx ("[
 				<tr class="on-hover">
 					<td>{name}</td>
@@ -253,6 +406,29 @@ feature -- HTML Generation
 		ensure
 			result_not_empty: not Result.is_empty
 			contains_dog_info: Result.has_substring (a_dog.name) and Result.has_substring (a_dog.breed)
+		end
+
+	oob_page: STRING
+		local
+			l_esx: ESX
+					l_variables: STRING_TABLE [ANY]
+		do
+			create l_esx
+			create l_variables.make (0)
+			Result := l_esx.esx("[
+				<html>
+				<head>
+				<title>Out-of-Band Demo</title>
+				<script src="https://unpkg.com/htmx.org@2.0.0"></script>
+				</head>
+				<body>
+				<button hx-get="/oob/demo" hx-target="#target1">Send</button>
+				<div id="target1">original 1</div>
+				<div id="target2">original 2</div>
+				<div id="target3">original 3</div>
+				</body>
+				</html>
+			]", l_variables)
 		end
 
 end
