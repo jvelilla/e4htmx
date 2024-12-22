@@ -411,7 +411,7 @@ feature -- HTML Generation
 	oob_page: STRING
 		local
 			l_esx: ESX
-					l_variables: STRING_TABLE [ANY]
+			l_variables: STRING_TABLE [ANY]
 		do
 			create l_esx
 			create l_variables.make (0)

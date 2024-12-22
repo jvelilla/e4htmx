@@ -14,9 +14,6 @@
 		<setting name="console_application" value="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>
-		<precompile name="base_pre" location="$ISE_PRECOMP\base-scoop-safe.ecf">
-			<option warning="none"/>
-		</precompile>
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf">
 			<option warning="none"/>
 		</library>
