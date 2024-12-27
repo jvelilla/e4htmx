@@ -5,15 +5,17 @@ note
     date: "$Date$"
     revision: "$Revision$"
 class
-    htmx_input_validation
+    HTMX_TODO
 inherit
     WSF_LAUNCHABLE_SERVICE
         redefine
             initialize
         end
-    APPLICATION_LAUNCHER [htmx_input_validation_EXECUTION]
+    APPLICATION_LAUNCHER [HTMX_TODO_EXECUTION]
+
 create
     make_and_launch
+
 feature {NONE} -- Initialization
     initialize
             -- Initialize current service.
@@ -22,4 +24,4 @@ feature {NONE} -- Initialization
             set_service_option ("port", 9090)
             set_service_option ("verbose", "yes")
         end
-end 
+end
