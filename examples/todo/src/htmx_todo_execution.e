@@ -48,7 +48,7 @@ feature -- Router
 			map_uri_agent ("/todos", agent handle_todos, router.methods_get_post)
 			map_uri_template_agent ("/todos/{id}", agent handle_delete_todo, router.methods_delete)
 			map_uri_agent ("/todos/status", agent handle_todos_status, router.methods_get)
-			map_uri_template_agent ("/todos/{id}/description", agent handle_update_todo_description, router.methods_put)
+			map_uri_template_agent ("/todos/{id}/description", agent handle_update_todo_description, methods_patch)
 			map_uri_template_agent ("/todos/{id}/toggle-complete", agent handle_toggle_todo_complete, methods_patch)
 
 			create www.make_with_path (document_root)
@@ -403,9 +403,7 @@ feature {NONE} -- Implementation
 				"hx-swap=%"outerHTML%">")
 
 				-- Description text with Alpine.js click handling
-			Result.append ("<div class=%"description%" x-show=%"id !== editingId%" " +
-				"x-on:click.stop: %"editingId = id%">" +
-				todo.description + "</div>")
+			Result.append ("<div class=%"description%" x-show=%"id !== editingId%" x-on:click.stop=%"editingId = id%" >" + todo.description + "</div>")
 
 				-- Edit input with proper HTMX triggers
 			Result.append ("<input type=%"text%" name=%"description%" " +
@@ -413,7 +411,7 @@ feature {NONE} -- Implementation
 				"hx-trigger=%"blur, keyup[keyCode === 13]%" " +
 				"hx-patch=%"/todos/" + todo.id.out + "/description%" " +
 				"hx-target=%"closest div%" hx-swap=%"outerHTML%" " +
-				"x-show=%"id === editingId%" x-on:click.stop:%"%" >")
+				"x-show=%"id === editingId%" x-on:click.stop=%"%" >")
 
 				-- Delete button with confirmation and animation
 			Result.append ("<button class=%"plain%" " +
