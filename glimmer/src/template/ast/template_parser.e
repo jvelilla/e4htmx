@@ -181,6 +181,29 @@ feature {NONE} -- Tag Processing
 				node_stack.extend (l_cond_node)
 				active_list := l_cond_node.true_branch
 				
+			elseif a_tag.starts_with ("else if ") or else a_tag.starts_with ("elsif ") then
+				if not node_stack.is_empty and then attached {CONDITIONAL_NODE} node_stack.last as l_cn then
+					if a_tag.starts_with ("else if ") then
+						l_cond := a_tag.substring (9, a_tag.count)
+					else
+						l_cond := a_tag.substring (6, a_tag.count)
+					end
+					l_cond.left_adjust
+					l_cond.right_adjust
+					
+					create l_cond_node.make (l_cond, create {ARRAYED_LIST [TEMPLATE_NODE]}.make (10), Void)
+					
+					create false_branch.make (5)
+					false_branch.extend (l_cond_node)
+					l_cn.set_false_branch (false_branch)
+					
+					node_stack.remove_i_th (node_stack.count)
+					node_stack.extend (l_cond_node)
+					active_list := l_cond_node.true_branch
+				else
+					last_error := "Mismatched {{else if}} tag: no matching {{if}}"
+				end
+				
 			elseif a_tag.same_string ("else") then
 				if not node_stack.is_empty and then attached {CONDITIONAL_NODE} node_stack.last as l_cn then
 					-- Create false branch

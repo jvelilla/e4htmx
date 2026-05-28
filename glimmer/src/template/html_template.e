@@ -4,6 +4,9 @@ note
 class
 	HTML_TEMPLATE
 
+inherit
+	HTML_ESCAPER
+
 create
 	make
 
@@ -15,6 +18,8 @@ feature {NONE} -- Initialization
 			create variables.make (10)
 			create partials.make (10)
 			create sections.make (5)
+			create trigger_events.make (5)
+			trigger_events.compare_objects
 			recursion_depth := DEFAULT_MAX_RECURSION_DEPTH
 			auto_escape := True
 			last_error := Void
@@ -57,7 +62,7 @@ feature -- Status Report
 	is_reserved_name (name: READABLE_STRING_GENERAL): BOOLEAN
 			-- Check if name is reserved for loop metadata
 		do
-			Result := across reserved_names as r some r.item.same_string_general (name) end
+			Result := reserved_names_set.has (name.to_string_32)
 		end
 
 feature -- Element Change
@@ -112,6 +117,30 @@ feature -- Element Change
 		do
 			create l_name.make_from_string (name.to_string_32)
 			variables.force (value, l_name)
+		end
+
+	set_integer (name: READABLE_STRING_GENERAL; value: INTEGER)
+			-- Set an integer template variable
+		require
+			name_not_reserved: not is_reserved_name (name)
+		do
+			set_variable (name, value)
+		end
+
+	set_boolean (name: READABLE_STRING_GENERAL; value: BOOLEAN)
+			-- Set a boolean template variable
+		require
+			name_not_reserved: not is_reserved_name (name)
+		do
+			set_variable (name, value)
+		end
+
+	set_string (name: READABLE_STRING_GENERAL; value: READABLE_STRING_GENERAL)
+			-- Set a string template variable
+		require
+			name_not_reserved: not is_reserved_name (name)
+		do
+			set_variable (name, value.to_string_32)
 		end
 
 	register_partial (name: READABLE_STRING_GENERAL; template: READABLE_STRING_GENERAL)
@@ -189,14 +218,149 @@ feature -- Operations
 			Result := render_section_internal (template, section_name, template_name)
 		end
 
+	render_oob (template: READABLE_STRING_GENERAL; sections_to_render: ARRAY [READABLE_STRING_GENERAL]): STRING_32
+			-- Render multiple sections as an OOB response
+		do
+			Result := render_oob_internal (template, sections_to_render, Void)
+		end
+
+	render_oob_with_name (template: READABLE_STRING_GENERAL; sections_to_render: ARRAY [READABLE_STRING_GENERAL]; template_name: READABLE_STRING_GENERAL): STRING_32
+			-- Render multiple sections as an OOB response, using named cache entry
+		do
+			Result := render_oob_internal (template, sections_to_render, template_name)
+		end
+
+	render_oob_internal (template: READABLE_STRING_GENERAL; sections_to_render: ARRAY [READABLE_STRING_GENERAL]; a_name: detachable READABLE_STRING_GENERAL): STRING_32
+			-- Implementation of OOB rendering
+		local
+			i: INTEGER
+			l_sec_name: STRING_32
+			l_sec_content: STRING_32
+		do
+			create Result.make_empty
+			if not sections_to_render.is_empty then
+				-- Render first section normally
+				l_sec_name := sections_to_render.item (sections_to_render.lower).to_string_32
+				Result := render_section_internal (template, l_sec_name, a_name)
+				
+				-- Render subsequent sections wrapped in hx-swap-oob divs
+				from
+					i := sections_to_render.lower + 1
+				until
+					i > sections_to_render.upper
+				loop
+					l_sec_name := sections_to_render.item (i).to_string_32
+					l_sec_content := render_section_internal (template, l_sec_name, a_name)
+					
+					Result.append ("<div hx-swap-oob=%"true%" id=%"" + l_sec_name + "%">")
+					Result.append (l_sec_content)
+					Result.append ("</div>")
+					
+					i := i + 1
+				end
+			end
+		end
+
 	clear_cache
 			-- Clear the compilation cache
 		do
 			compiled_templates_cache.wipe_out
+			section_nodes_cache.wipe_out
 		end
 
 	max_cache_size: INTEGER = 500
 			-- Maximum capacity of the compilation cache
+
+feature -- HTMX Metadata
+
+	trigger_events: ARRAYED_LIST [STRING_32]
+			-- Events to include in HX-Trigger response header
+
+	push_url: detachable STRING_32
+			-- URL to push into the browser history (HX-Push-Url)
+
+	replace_url: detachable STRING_32
+			-- URL to replace in the browser history (HX-Replace-Url)
+
+	add_trigger (event_name: READABLE_STRING_GENERAL)
+			-- Register an HTMX event to fire after swap
+		do
+			trigger_events.extend (event_name.to_string_32)
+		ensure
+			trigger_added: trigger_events.has (event_name.to_string_32)
+		end
+
+	htmx_trigger_header: STRING_32
+			-- Serialise trigger_events as JSON for the HX-Trigger header
+		local
+			l_first: BOOLEAN
+		do
+			create Result.make (100)
+			Result.append ("{")
+			l_first := True
+			across trigger_events as event loop
+				if not l_first then
+					Result.append (", ")
+				end
+				Result.append ("%"")
+				Result.append (event.item)
+				Result.append ("%":true")
+				l_first := False
+			end
+			Result.append ("}")
+		end
+
+	set_push_url (url: READABLE_STRING_GENERAL)
+			-- Set URL to push into browser history (HX-Push-Url)
+		do
+			create push_url.make_from_string (url.to_string_32)
+		ensure
+			push_url_set: attached push_url as p and then p.same_string_general (url)
+		end
+
+	set_replace_url (url: READABLE_STRING_GENERAL)
+			-- Set URL to replace in browser history (HX-Replace-Url)
+		do
+			create replace_url.make_from_string (url.to_string_32)
+		ensure
+			replace_url_set: attached replace_url as r and then r.same_string_general (url)
+		end
+
+	clear_push_url
+			-- Clear push URL metadata
+		do
+			push_url := Void
+		ensure
+			push_url_cleared: push_url = Void
+		end
+
+	clear_replace_url
+			-- Clear replace URL metadata
+		do
+			replace_url := Void
+		ensure
+			replace_url_cleared: replace_url = Void
+		end
+
+	clear_trigger_events
+			-- Clear registered trigger events
+		do
+			trigger_events.wipe_out
+		ensure
+			trigger_events_cleared: trigger_events.is_empty
+		end
+
+	clear_htmx_metadata
+			-- Clear all HTMX-specific response metadata
+		do
+			clear_trigger_events
+			clear_push_url
+			clear_replace_url
+		ensure
+			trigger_events_cleared: trigger_events.is_empty
+			push_url_cleared: push_url = Void
+			replace_url_cleared: replace_url = Void
+		end
 
 feature -- Expression Evaluation
 
@@ -211,36 +375,6 @@ feature -- Expression Evaluation
 
 feature -- HTML Safety
 
-	escape_html (str: READABLE_STRING_GENERAL): STRING_32
-			-- Convert HTML special characters to entities in a single pass
-		local
-			i: INTEGER
-			c: CHARACTER_32
-		do
-			create Result.make (str.count + 20)
-			from
-				i := 1
-			until
-				i > str.count
-			loop
-				c := str.item (i)
-				inspect c
-				when '&' then
-					Result.append ("&amp;")
-				when '<' then
-					Result.append ("&lt;")
-				when '>' then
-					Result.append ("&gt;")
-				when '"' then
-					Result.append ("&quot;")
-				when '%'' then
-					Result.append ("&#39;")
-				else
-					Result.extend (c)
-				end
-				i := i + 1
-			end
-		end
 
 	render_safe (template: READABLE_STRING_GENERAL): STRING_32
 			-- Render template with HTML-escaped variables
@@ -255,7 +389,7 @@ feature -- HTML Safety
 				create Result.make_empty
 			else
 				create l_context.make (variables, partials, recursion_depth, False, compiled_templates_cache, max_cache_size)
-				create l_buffer.make (template.count * 2)
+				create l_buffer.make (template.count * 8)
 				across l_nodes as node loop
 					node.item.render (l_context, l_buffer)
 				end
@@ -282,7 +416,7 @@ feature {NONE} -- Implementation
 				
 				if attached layout as l_layout then
 					-- Layout is present. Render main template into a temporary buffer
-					create l_main_buffer.make (template.count * 2)
+					create l_main_buffer.make (template.count * 8)
 					across l_nodes as node loop
 						node.item.render (l_context, l_main_buffer)
 					end
@@ -292,7 +426,7 @@ feature {NONE} -- Implementation
 					end
 					
 					-- Render layout
-					create l_buffer.make (l_layout.count * 2)
+					create l_buffer.make (l_layout.count * 8)
 					l_nodes := get_compiled_template_with_name (l_layout, Void)
 					if not has_error then
 						across l_nodes as node loop
@@ -301,7 +435,7 @@ feature {NONE} -- Implementation
 					end
 				else
 					-- No layout, render main template directly to l_buffer
-					create l_buffer.make (template.count * 2)
+					create l_buffer.make (template.count * 8)
 					across l_nodes as node loop
 						node.item.render (l_context, l_buffer)
 					end
@@ -325,24 +459,51 @@ feature {NONE} -- Implementation
 			l_context: RENDER_CONTEXT
 			l_buffer: STRING_32
 			l_sec_name: STRING_32
+			l_cache_key: detachable STRING_32
+			l_section: detachable SECTION_NODE
 		do
 			last_error := Void
-			l_nodes := get_compiled_template_with_name (template, a_name)
+			create l_sec_name.make_from_string (section_name.to_string_32)
+			
+			if attached a_name as n then
+				create l_cache_key.make (n.count + l_sec_name.count + 1)
+				l_cache_key.append (n.to_string_32)
+				l_cache_key.append_character ('#')
+				l_cache_key.append (l_sec_name)
+				
+				if section_nodes_cache.has (l_cache_key) and then attached section_nodes_cache.item (l_cache_key) as l_cached then
+					l_section := l_cached
+				end
+			end
+			
+			if l_section = Void then
+				l_nodes := get_compiled_template_with_name (template, a_name)
+				if not has_error then
+					l_section := find_section_node (l_nodes, l_sec_name)
+					if l_section /= Void and then attached l_cache_key as k then
+						if section_nodes_cache.count >= max_cache_size then
+							section_nodes_cache.start
+							if not section_nodes_cache.off then
+								section_nodes_cache.remove (section_nodes_cache.key_for_iteration)
+							end
+						end
+						section_nodes_cache.force (l_section, k)
+					end
+				end
+			end
+			
 			if has_error then
 				create Result.make_empty
-			else
-				create l_sec_name.make_from_string (section_name.to_string_32)
-				if attached find_section_node (l_nodes, l_sec_name) as l_section then
-					create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
-					create l_buffer.make (128)
-					across l_section.body as node loop
-						node.item.render (l_context, l_buffer)
-					end
-					Result := l_buffer
-				else
-					last_error := "Section not found: " + l_sec_name
-					create Result.make_empty
+			elseif l_section /= Void then
+				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+				create l_buffer.make (128)
+				across l_section.body as node loop
+					node.item.render (l_context, l_buffer)
 				end
+				Result := l_buffer
+			else
+				last_error := "Section not found: " + l_sec_name
+				create Result.make_empty
 			end
 		end
 
@@ -419,18 +580,23 @@ feature {NONE} -- Implementation
 			Result.compare_objects
 		end
 
-	reserved_names: ARRAY [STRING_32]
-			-- Names reserved for loop metadata
+	section_nodes_cache: HASH_TABLE [SECTION_NODE, STRING_32]
+			-- Process-wide section AST node cache
 		once
-			Result := {ARRAY [STRING_32]} <<
-					"index",
-					"count",
-					"is_first",
-					"is_last",
-					"is_even",
-					"is_odd"
-				>>
+			create Result.make (100)
 			Result.compare_objects
+		end
+
+	reserved_names_set: HASH_SET [STRING_32]
+			-- Set of reserved names for loop metadata
+		once
+			create Result.make_equal (10)
+			Result.put ("index")
+			Result.put ("count")
+			Result.put ("is_first")
+			Result.put ("is_last")
+			Result.put ("is_even")
+			Result.put ("is_odd")
 		end
 
 end

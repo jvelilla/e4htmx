@@ -4,6 +4,9 @@ note
 class
 	RENDER_CONTEXT
 
+inherit
+	HTML_ESCAPER
+
 create
 	make, make_sub
 
@@ -137,36 +140,6 @@ feature -- Operations and Parsing
 			end
 		end
 
-	escape_html (str: READABLE_STRING_GENERAL): STRING_32
-			-- Convert HTML special characters to entities in a single pass
-		local
-			i: INTEGER
-			c: CHARACTER_32
-		do
-			create Result.make (str.count + 20)
-			from
-				i := 1
-			until
-				i > str.count
-			loop
-				c := str.item (i)
-				inspect c
-				when '&' then
-					Result.append ("&amp;")
-				when '<' then
-					Result.append ("&lt;")
-				when '>' then
-					Result.append ("&gt;")
-				when '"' then
-					Result.append ("&quot;")
-				when '%'' then
-					Result.append ("&#39;")
-				else
-					Result.extend (c)
-				end
-				i := i + 1
-			end
-		end
 
 	get_compiled_template_with_name (a_template: READABLE_STRING_GENERAL; a_name: detachable READABLE_STRING_GENERAL): ARRAYED_LIST [TEMPLATE_NODE]
 			-- Compile template string, returning cached AST if already compiled
@@ -183,14 +156,15 @@ feature -- Operations and Parsing
 					Result := l_parser.parse (a_template.to_string_32)
 					if l_parser.has_error and then attached l_parser.last_error as err then
 						set_error (err)
-					end
-					if cache.count >= max_cache_size then
-						cache.start
-						if not cache.off then
-							cache.remove (cache.key_for_iteration)
+					else
+						if cache.count >= max_cache_size then
+							cache.start
+							if not cache.off then
+								cache.remove (cache.key_for_iteration)
+							end
 						end
+						cache.force (Result, l_key)
 					end
-					cache.force (Result, l_key)
 				end
 			else
 				create l_parser.make
@@ -219,70 +193,19 @@ feature -- Operations and Parsing
 feature -- Expression Evaluation
 
 	evaluate_expression (expression: STRING_32): BOOLEAN
-			-- Evaluate a conditional expression
+			-- Evaluate a conditional expression.
+			-- Note: This is part of the public ad-hoc evaluation API and is not
+			-- invoked on the template rendering hot path (which uses pre-compiled AST nodes).
 		local
-			l_parts: ARRAYED_LIST [STRING_32]
-			l_operator: detachable STRING_32
-			l_left, l_right: ANY
-			l_left_str: STRING_32
-			l_value: detachable ANY
-			i: INTEGER
+			l_parser: EXPRESSION_PARSER
+			l_expr_node: EXPRESSION_NODE
 		do
-			expression.left_adjust
-			expression.right_adjust
-
-			if expression.has_substring (" and ") then
-				l_parts := split_string (expression, " and ")
-				Result := True
-				from
-					i := 1
-				until
-					i > l_parts.count or else not Result
-				loop
-					Result := evaluate_expression (l_parts.i_th (i))
-					i := i + 1
-				end
-			elseif expression.has_substring (" or ") then
-				l_parts := split_string (expression, " or ")
-				Result := False
-				from
-					i := 1
-				until
-					i > l_parts.count or else Result
-				loop
-					Result := evaluate_expression (l_parts.i_th (i))
-					i := i + 1
-				end
-			elseif expression.starts_with ("not ") then
-				Result := not evaluate_expression (expression.substring (5, expression.count))
-			elseif expression.starts_with ("exists ") then
-				l_left_str := expression.substring (8, expression.count)
-				l_left_str.left_adjust
-				l_left_str.right_adjust
-				Result := has (l_left_str)
-			else
-					-- Handle comparison operators
-				l_operator := find_operator (expression)
-				if l_operator /= Void then
-					l_parts := split_string (expression, l_operator)
-					if l_parts.count = 2 then
-						l_left := resolve_value (l_parts.first)
-						l_right := resolve_value (l_parts.last)
-						Result := compare_values (l_left, l_right, l_operator)
-					end
-				else
-						-- Simple variable check
-					l_value := item (expression)
-					if l_value /= Void then
-						Result := is_truthy (l_value)
-					else
-						Result := False
-					end
-				end
-			end
+			create l_parser.make
+			l_expr_node := l_parser.parse (expression)
+			Result := l_expr_node.evaluate (Current)
 		end
 
-feature {NONE} -- Expression Implementation
+feature {EXPRESSION_NODE, RENDER_CONTEXT, HTML_TEMPLATE} -- Expression Implementation
 
 	find_operator (expression: STRING_32): detachable STRING_32
 			-- Find the first operator in the expression
@@ -360,9 +283,35 @@ feature {NONE} -- Expression Implementation
 			-- Check if two values are equal
 		do
 			if attached {NUMERIC} left as l_num and attached {NUMERIC} right as r_num then
-				Result := l_num.is_equal (r_num)
+				if left.generating_type ~ right.generating_type then
+					Result := l_num.is_equal (r_num)
+				else
+					Result := resolve_to_double (left) = resolve_to_double (right)
+				end
 			else
 				Result := left ~ right
+			end
+		end
+
+	resolve_to_double (a_val: ANY): REAL_64
+			-- Convert any numeric value to double
+		do
+			if attached {REAL_64} a_val as r64 then
+				Result := r64
+			elseif attached {REAL_32} a_val as r32 then
+				Result := r32.to_double
+			elseif attached {INTEGER_64} a_val as i64 then
+				Result := i64.to_double
+			elseif attached {INTEGER_32} a_val as i32 then
+				Result := i32.to_double
+			elseif attached {INTEGER_16} a_val as i16 then
+				Result := i16.to_double
+			elseif attached {INTEGER_8} a_val as i8 then
+				Result := i8.to_double
+			elseif attached {INTEGER} a_val as i then
+				Result := i.to_double
+			elseif attached {REAL} a_val as r then
+				Result := r.to_double
 			end
 		end
 

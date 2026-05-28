@@ -1034,4 +1034,112 @@ feature -- Test routines
 			assert ("render_success", l_result.same_string ("Hello"))
 		end
 
+	test_elsif_tag
+			-- Test else if and elsif parsing and branching
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			
+			l_template.set_variable ("val", 2)
+			l_result := l_template.render ("{{if val == 1}}one{{else if val == 2}}two{{else}}other{{end}}")
+			assert ("else_if_branch", l_result.same_string_general ("two"))
+
+			l_result := l_template.render ("{{if val == 1}}one{{elsif val == 3}}three{{else}}other{{end}}")
+			assert ("elsif_branch_false", l_result.same_string_general ("other"))
+		end
+
+	test_htmx_request_helper
+			-- Test HTMX_REQUEST header introspection helper
+		local
+			l_headers: STRING_TABLE [READABLE_STRING_GENERAL]
+			l_req: HTMX_REQUEST
+		do
+			create l_headers.make (5)
+			l_headers.put ("true", "hx-request")
+			l_headers.put ("my-target", "HX-Target")
+			l_headers.put ("my-trigger", "hx-trigger-name")
+			l_headers.put ("http://localhost/test", "HX-CURRENT-URL")
+
+			create l_req.make (l_headers)
+			assert ("is_htmx", l_req.is_htmx_request)
+			assert ("target", attached l_req.hx_target as t and then t.same_string_general ("my-target"))
+			assert ("trigger_name", attached l_req.hx_trigger_name as tr and then tr.same_string_general ("my-trigger"))
+			assert ("current_url", attached l_req.hx_current_url as cur and then cur.same_string_general ("http://localhost/test"))
+		end
+
+	test_htmx_metadata_builders
+			-- Test HTMX response metadata builders
+		local
+			l_template: HTML_TEMPLATE
+		do
+			create l_template.make
+			l_template.add_trigger ("event1")
+			l_template.add_trigger ("event2")
+			assert ("trigger_header", l_template.htmx_trigger_header.same_string_general ("{%"event1%":true, %"event2%":true}"))
+
+			l_template.set_push_url ("/new-url")
+			l_template.set_replace_url ("/replaced-url")
+			assert ("push_url", attached l_template.push_url as p and then p.same_string_general ("/new-url"))
+			assert ("replace_url", attached l_template.replace_url as r and then r.same_string_general ("/replaced-url"))
+
+			l_template.clear_htmx_metadata
+			assert ("cleared_triggers", l_template.trigger_events.is_empty)
+			assert ("cleared_push", l_template.push_url = Void)
+			assert ("cleared_replace", l_template.replace_url = Void)
+		end
+
+	test_render_oob
+			-- Test HTMX Out-of-Band (OOB) rendering
+		local
+			l_template: HTML_TEMPLATE
+			l_sections: ARRAY [READABLE_STRING_GENERAL]
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("user", "Javier")
+			
+			l_sections := << "main", "sidebar" >>
+			l_result := l_template.render_oob (
+				"{{section main}}Welcome {user}!{{end}}{{section sidebar}}Side Info{{end}}",
+				l_sections
+			)
+			assert ("render_oob_output", l_result.same_string_general ("Welcome Javier!<div hx-swap-oob=%"true%" id=%"sidebar%">Side Info</div>"))
+		end
+
+	test_typed_setters
+			-- Test typed variable setters
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_integer ("total", 123)
+			l_template.set_boolean ("flag", True)
+			l_template.set_string ("msg", "hello")
+
+			l_result := l_template.render ("{total} {flag} {msg}")
+			assert ("typed_setters_interpolated", l_result.same_string_general ("123 True hello"))
+		end
+
+	test_section_nodes_cache
+			-- Test that render_section cache is active and doesn't crash on hot path
+		local
+			l_template: HTML_TEMPLATE
+			l_result1, l_result2: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("val", "abc")
+			
+			-- Render section using named cache key first time (compiles and caches section node)
+			l_result1 := l_template.render_section_with_name ("{{section sec}}Value: {val}{{end}}", "sec", "sec_template")
+			assert ("sec_render_1", l_result1.same_string_general ("Value: abc"))
+
+			-- Change variable and render again (should read section node from cache directly)
+			l_template.set_variable ("val", "xyz")
+			l_result2 := l_template.render_section_with_name ("{{section sec}}Value: {val}{{end}}", "sec", "sec_template")
+			assert ("sec_render_2", l_result2.same_string_general ("Value: xyz"))
+		end
+
 end

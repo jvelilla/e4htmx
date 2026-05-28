@@ -50,35 +50,42 @@ feature -- Rendering
 				l_val := a_context.item (collection_name)
 				if attached {ITERABLE [ANY]} l_val as l_iter then
 					-- Pre-collect to avoid double iteration (correctness + database safety)
-					create l_items.make (10)
+					if attached {FINITE [ANY]} l_val as l_finite then
+						create l_items.make (l_finite.count)
+					else
+						create l_items.make (10)
+					end
 					across l_iter as item loop
 						l_items.extend (item.item)
 					end
 					
 					l_total := l_items.count
-					from
-						l_index := 1
-					until
-						l_index > l_total
-					loop
-						-- Create sub-context for each iteration (scoped variable stack)
+					if l_total > 0 then
+						-- Create sub-context once and reuse it for all iterations
 						create sub_context.make_sub (a_context)
-						
-						-- Bind iterator variable and loop metadata
-						sub_context.variables.force (l_items.i_th (l_index), iterator_name)
-						sub_context.variables.force (l_index, "index")
-						sub_context.variables.force (l_total, "count")
-						sub_context.variables.force (l_index = 1, "is_first")
-						sub_context.variables.force (l_index = l_total, "is_last")
-						sub_context.variables.force ((l_index \\ 2) = 0, "is_even")
-						sub_context.variables.force ((l_index \\ 2) = 1, "is_odd")
-						
-						-- Render loop body
-						across body as node loop
-							node.item.render (sub_context, a_buffer)
+						from
+							l_index := 1
+						until
+							l_index > l_total
+						loop
+							sub_context.variables.wipe_out
+							
+							-- Bind iterator variable and loop metadata
+							sub_context.variables.force (l_items.i_th (l_index), iterator_name)
+							sub_context.variables.force (l_index, "index")
+							sub_context.variables.force (l_total, "count")
+							sub_context.variables.force (l_index = 1, "is_first")
+							sub_context.variables.force (l_index = l_total, "is_last")
+							sub_context.variables.force ((l_index \\ 2) = 0, "is_even")
+							sub_context.variables.force ((l_index \\ 2) = 1, "is_odd")
+							
+							-- Render loop body
+							across body as node loop
+								node.item.render (sub_context, a_buffer)
+							end
+							
+							l_index := l_index + 1
 						end
-						
-						l_index := l_index + 1
 					end
 				end
 			end
