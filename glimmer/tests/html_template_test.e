@@ -9,6 +9,7 @@ class
 inherit
 	EQA_TEST_SET
 
+
 feature -- Test routines
 
 	test_basic_template
@@ -863,6 +864,93 @@ feature -- Test routines
 
 			assert ("Loop metadata should be correctly rendered",
 				result_string.same_string ("1,3,True,False,False,True|2,3,False,False,True,False|3,3,False,True,False,True|"))
+		end
+
+	test_htmx_render_section
+			-- Test rendering specific named section without layout (HTMX style)
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_layout ("<html>{{yield body}}</html>")
+			l_template.set_variable ("username", "Javier")
+			
+			-- Render only the "body" section
+			l_result := l_template.render_section (
+				"{{section body}}Welcome back, {username}!{{end}}{{section header}}Title{{end}}",
+				"body"
+			)
+			assert ("render_section_success", l_result.same_string ("Welcome back, Javier!"))
+		end
+
+	test_complex_conditional_in_template
+			-- Test complex expressions inside template if statements
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("age", 18)
+			
+			l_result := l_template.render ("{{if age >= 18}}Adult{{else}}Minor{{end}}")
+			assert ("complex_if_true", l_result.same_string ("Adult"))
+			
+			l_template.set_variable ("age", 16)
+			l_result := l_template.render ("{{if age >= 18}}Adult{{else}}Minor{{end}}")
+			assert ("complex_if_false", l_result.same_string ("Minor"))
+		end
+
+	test_scoped_variable_isolation
+			-- Test that loop variable scopes are properly isolated and do not overwrite outer variables
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+			l_outer: ARRAYED_LIST [STRING]
+			l_inner: ARRAYED_LIST [STRING]
+		do
+			create l_template.make
+			create l_outer.make (2)
+			l_outer.extend ("A")
+			l_outer.extend ("B")
+			
+			create l_inner.make (2)
+			l_inner.extend ("1")
+			l_inner.extend ("2")
+			
+			l_template.set_variable ("outer", l_outer)
+			l_template.set_variable ("inner", l_inner)
+			l_template.set_variable ("item", "Original")
+			
+			l_result := l_template.render (
+				"Before:{item}|" +
+				"{{each item in outer}}" +
+					"Outer:{item}(" +
+					"{{each item in inner}}Inner:{item},{{end}}" +
+					")|" +
+				"{{end}}" +
+				"After:{item}"
+			)
+			
+			assert ("scoped_isolation", l_result.same_string (
+				"Before:Original|" +
+				"Outer:A(Inner:1,Inner:2,)|" +
+				"Outer:B(Inner:1,Inner:2,)|" +
+				"After:Original"
+			))
+		end
+
+	test_render_file_error_reporting
+			-- Test file missing error reporting
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_result := l_template.render_file ("nonexistent_file_xyz.html")
+			assert ("nonexistent_returns_empty", l_result.is_empty)
+			assert ("has_error_set", l_template.has_error)
+			assert ("error_description_set", attached l_template.last_error as err and then err.has_substring ("not found"))
 		end
 
 end

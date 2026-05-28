@@ -22,7 +22,7 @@
 			<class_option class="APPLICATION" warning="none" is_obsolete_iteration="true" manifest_array_type="mismatch_warning"/>
 		</cluster>
 	</target>
-	<target name="testing" extends="glimmer">
+	<target name="tests" extends="glimmer">
 		<root class="ANY" feature="default_create"/>
 		<library name="testing" location="$ISE_LIBRARY\library\testing\testing.ecf"/>
 		<cluster name="testcases" location=".\tests\" recursive="true">

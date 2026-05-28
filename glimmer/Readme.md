@@ -2,24 +2,31 @@
 
 ## Features
 
-- Template caching
-- ✓ HTML escaping for variables
-  - Automatic HTML escaping by default
-  - Raw variable support with {raw:variable}
+- ✓ **High Performance**: Single-pass AST-based parsing and interpretation.
+- ✓ **Template Caching**: Process-wide caching of compiled ASTs to eliminate re-parsing overhead.
+- ✓ **HTML Escaping**:
+  - Automatic HTML escaping by default (single-pass character escaping)
+  - Raw variable support with `{raw:variable}`
   - Global auto-escape control
-- ✓ Conditional blocks
-  - Support for if/else conditions
-  - Truthy/falsy value evaluation
-  - Syntax: {{if condition}}...{{else}}...{{end}}
-- ✓ Loops/iterations
-  - Iterate over collections
-  - Syntax: {{each item in collection}}...{{end}}
+- ✓ **Conditional Blocks**:
+  - Support for `if/else` conditions
+  - Truthy/falsy value evaluation (correctly evaluates falsy inputs like `0`, `False`, or empty strings)
+  - Rich conditional expressions supporting operators (`==`, `!=`, `<`, `>`, `<=`, `>=`), existence checks (`exists`), and logic (`and`, `or`, `not`)
+  - Syntax: `{{if condition}}...{{else}}...{{end}}`
+- ✓ **Loops/Iterations**:
+  - Safe iteration over collections (pre-collected to avoid double-iteration overhead)
+  - Scoped variable stacks to ensure loop-local variables (like `index`, `count`, `is_first`, `is_last`, `is_even`, `is_odd`) are isolated
+  - Syntax: `{{each item in collection}}...{{end}}`
   - Supports nested loops
-- ✓ Layout templates
+- ✓ **Layout Templates & Partials**:
   - Base layouts with content sections
-  - Section definitions with {{section name}}...{{end}}
-  - Content placement with {{yield section_name}}
-  - Nested layouts support
+  - Section definitions with `{{section name}}...{{end}}`
+  - Content placement with `{{yield section_name}}`
+  - Inclusion of partial templates via `{{include partial_name}}`
+- ✓ **HTMX Partials**:
+  - Targeted section rendering via `render_section` to support returning layout-free HTML fragments
+- ✓ **Error Reporting**:
+  - Error capture with `last_error` and `has_error` for templates and missing files
 
 ## Loop Iteration
 
@@ -29,16 +36,17 @@ The template engine supports iterating over collections using the following synt
 {{each item in collection}}
     Content with {item}
 {{end}}
+```
 
 This implementation provides:
 1. Simple iteration over collections using `{{each item in collection}}` syntax
-2. Support for any ITERABLE type
+2. Support for any `ITERABLE` type
 3. Nested variable resolution within loops
 4. Empty collection handling
-5. Proper cleanup of iterator variables
+5. Isolated scoping of iterator variables via parent-child context stacks
 6. Support for nested loops
 
-The loops are processed before conditionals and variable interpolation, allowing for complex template structures.
+Templates are parsed into an Abstract Syntax Tree (AST) and rendered in a single pass using a scoped context stack.
 
 ## Conditional Blocks
 

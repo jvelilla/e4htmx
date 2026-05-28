@@ -141,6 +141,15 @@ template.set_layout(layout_content)
 result := template.render(page_content)
 ```
 
+### HTMX Section Rendering (Partial Rendering)
+
+For HTMX applications that perform partial updates, you often want to render only a specific section of a page without returning the entire outer layout. You can do this using `render_section`:
+
+```eiffel
+-- Renders only the "content" section, bypassing layout wrapping entirely:
+result := template.render_section(page_content, "content")
+```
+
 ## Partial Templates
 
 You can include partial templates:
@@ -262,22 +271,18 @@ The following values are considered "truthy":
 {{end}}
 ```
 
-## Current Limitations
+## Design Strengths & Optimizations
 
-1. **Variable Scope**: Variable scope in nested loops could be improved for better isolation between iterations.
+1. **Template Caching**: The engine caches compiled Abstract Syntax Trees (ASTs) process-wide in `compiled_templates_cache`. If a template has been compiled once, subsequent renders reuse the parsed AST, avoiding parsing overhead.
+2. **Scoped Variable Isolation**: Each loop iteration and nested block creates a local sub-scope via `RENDER_CONTEXT`, avoiding variable leakage and ensuring loop variables (like `index`, `is_first`, etc.) are fully isolated.
+3. **Linear Single-Pass Parser**: The parser scans input in a single pass using a stack to resolve block nesting (`{{if}}`, `{{each}}`, `{{section}}`) efficiently in $O(N)$ time with zero redundant substring allocations.
+4. **Single-Pass Escaper**: Character escaping is handled via a single-pass inspection, minimizing string allocation and garbage collection pressure.
+5. **Detailed Error Reporting**: Comprehensive error capture with `last_error` and `has_error` attributes tracks syntax and file loading errors.
 
-2. **Error Handling**: The current implementation lacks comprehensive error handling and reporting for template syntax errors.
+## Current Limitations & Future Work
 
-3. **Performance**: Template parsing is done on every render. A caching mechanism for parsed templates would improve performance.
-
-4. **No Built-in Filters**: Unlike some template engines, there's no built-in filter system for formatting output (e.g., date formatting, number formatting).
-
-5. **Limited Debug Support**: No debugging features or template line number reporting for errors.
-
-6. **No Whitespace Control**: No special syntax for controlling whitespace in the output.
-
-
-These limitations provide opportunities for future enhancements to make the template engine more robust and feature-complete.
+1. **No Built-in Filters**: There is no built-in filter system for formatting output (e.g., date formatting, number formatting).
+2. **No Whitespace Control**: No special syntax (like `{{-` or `-}}`) for controlling whitespace.
 
 ## Comparison with Other Template Engines
 
