@@ -153,7 +153,7 @@ feature -- Events
     handle_form (req: WSF_REQUEST; res: WSF_RESPONSE)
             -- Handle form request
         local
-            l_template: HTML_TEMPLATE
+            l_template: GLM_HTML_TEMPLATE
             l_result: STRING
         do
             create l_template.make

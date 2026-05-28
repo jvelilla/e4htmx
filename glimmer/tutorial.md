@@ -8,7 +8,7 @@ Glimmer is a powerful HTML template engine written in Eiffel that provides a sim
 
 ```eiffel
 local
-    template: HTML_TEMPLATE
+    template: GLM_HTML_TEMPLATE
 create
     template.make
 ```
@@ -274,7 +274,7 @@ The following values are considered "truthy":
 ## Design Strengths & Optimizations
 
 1. **Template Caching**: The engine caches compiled Abstract Syntax Trees (ASTs) process-wide in `compiled_templates_cache`. If a template has been compiled once, subsequent renders reuse the parsed AST, avoiding parsing overhead.
-2. **Scoped Variable Isolation**: Each loop iteration and nested block creates a local sub-scope via `RENDER_CONTEXT`, avoiding variable leakage and ensuring loop variables (like `index`, `is_first`, etc.) are fully isolated.
+2. **Scoped Variable Isolation**: Each loop iteration and nested block creates a local sub-scope via `GLM_RENDER_CONTEXT`, avoiding variable leakage and ensuring loop variables (like `index`, `is_first`, etc.) are fully isolated.
 3. **Linear Single-Pass Parser**: The parser scans input in a single pass using a stack to resolve block nesting (`{{if}}`, `{{each}}`, `{{section}}`) efficiently in $O(N)$ time with zero redundant substring allocations.
 4. **Single-Pass Escaper**: Character escaping is handled via a single-pass inspection, minimizing string allocation and garbage collection pressure.
 5. **Detailed Error Reporting**: Comprehensive error capture with `last_error` and `has_error` attributes tracks syntax and file loading errors.

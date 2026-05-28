@@ -96,11 +96,12 @@ feature -- Events
 	handle_users (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle GET request for /users
 		local
-			l_html: STRING
 			l_parser: JSON_PARSER
 			l_converter: JSON_USER_CONVERTER
 			l_users: ARRAYED_LIST [USER]
 			l_file: PLAIN_TEXT_FILE
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
 		do
 				-- Simulate delay (1 second)
 			{EXECUTION_ENVIRONMENT}.sleep (1_000_000_000)
@@ -116,39 +117,23 @@ feature -- Events
 				l_parser.parse_content
 				l_file.close
 
-					-- Generate HTML table
-				create l_html.make_from_string ("[
-							<table>
-							    <thead>
-							        <tr>
-							            <th>ID</th>
-							            <th>Name</th>
-							            <th>Email</th>
-							            <th>Company</th>
-							        </tr>
-							    </thead>
-							    <tbody>
-						]")
-
-					-- Convert JSON to user objects and generate table rows
+					-- Convert JSON to user objects and render template
 				if l_parser.is_valid and then attached {JSON_ARRAY} l_parser.parsed_json_array as json_array then
 					create l_converter
 					l_users := l_converter.from_json_array (json_array)
 
-					across l_users as user loop
-						l_html.append ("<tr>")
-						l_html.append ("<td>" + user.item.id.out + "</td>")
-						l_html.append ("<td>" + user.item.name + "</td>")
-						l_html.append ("<td>" + user.item.email + "</td>")
-						l_html.append ("<td>" + user.item.company.name + "</td>")
-						l_html.append ("</tr>%N")
+					create l_template.make
+					l_template.set_variable ("users", l_users)
+					l_result := l_template.render_file (document_root.appended ("\users_table.html").name)
+
+					if l_template.has_error and then attached l_template.last_error as err then
+						new_response_get (req, res, "<div class=%"error%">" + err.to_string_8 + "</div>")
+					else
+						new_response_get (req, res, l_result.to_string_8)
 					end
+				else
+					new_response_get (req, res, "<div class=%"error%">Invalid users data</div>")
 				end
-
-				l_html.append ("</tbody></table>")
-
-					-- Send response
-				new_response_get (req, res, l_html)
 			end
 		end
 

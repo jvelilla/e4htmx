@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd" name="glimmer" uuid="2A904818-80F1-42F2-AD14-AD9C481F8702" library_target="glimmer">
-	<target name="glimmer">
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd" name="ewf_glimmer" uuid="3C904818-80F1-42F2-AD14-AD9C481F8703" library_target="ewf_glimmer">
+	<target name="ewf_glimmer">
 		<root all_classes="true"/>
 		<file_rule>
 			<exclude>/CVS$</exclude>
@@ -17,13 +17,18 @@
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf">
 			<option warning="none"/>
 		</library>
-
-		<cluster name="glimmer" location=".\src" recursive="true">
+		<library name="glimmer" location="..\glimmer\glimmer.ecf" readonly="true"/>
+		<library name="wsf" location="$ISE_LIBRARY\contrib\library\web\framework\ewf\wsf\wsf.ecf">
+			<option warning="none"/>
+		</library>
+		<library name="http" location="$ISE_LIBRARY\contrib\library\network\protocol\http\http.ecf">
+			<option warning="none"/>
+		</library>
+		<cluster name="ewf_glimmer" location=".\src" recursive="true">
 			<option warning="none" is_obsolete_iteration="true" manifest_array_type="mismatch_warning"/>
-			<class_option class="APPLICATION" warning="none" is_obsolete_iteration="true" manifest_array_type="mismatch_warning"/>
 		</cluster>
 	</target>
-	<target name="tests" extends="glimmer">
+	<target name="tests" extends="ewf_glimmer">
 		<root class="ANY" feature="default_create"/>
 		<library name="testing" location="$ISE_LIBRARY\library\testing\testing.ecf"/>
 		<cluster name="testcases" location=".\tests\" recursive="true">

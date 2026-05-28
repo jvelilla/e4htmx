@@ -14,6 +14,7 @@ inherit
 	WSF_ROUTED_URI_TEMPLATE_HELPER
 	SHARED_EXECUTION_ENVIRONMENT
 	SHARED_DATABASE_MANAGER
+	EWF_GLIMMER_INTEGRATION
 
 create
 	make
@@ -150,7 +151,7 @@ feature -- Handlers
 			l_json: STRING
 			l_html: STRING
 			l_accept: detachable READABLE_STRING_32
-			l_htmx: HTMX_REQUEST
+			l_htmx: GLM_HTMX_REQUEST
 		do
 				-- Get Accept header
 			l_accept := req.meta_string_variable ("HTTP_ACCEPT")
@@ -173,7 +174,7 @@ feature -- Handlers
 				new_response_json (req, res, l_json)
 			else
 					-- Check if this is a direct browser request (not via HTMX)
-				l_htmx := htmx_request (req)
+				l_htmx := GLM_HTMX_REQUEST (req)
 				if not l_htmx.is_htmx_request then
 						-- Redirect direct browser requests to the index.html page
 						-- so the user gets the fully styled web app layout.
@@ -382,39 +383,19 @@ feature -- Handlers
 feature {NONE} -- Implementation
 
 	todo_item_html (todo: TODO): STRING
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
 		do
-			create Result.make_from_string ("")
-			Result.append ("<div class=%"todo-item%" x-data=%"{id: " + todo.id.out + "}%">")
-
-				-- Checkbox with proper HTMX attributes
-			Result.append ("<input type=%"checkbox%" ")
-
-			if todo.completed = 1  then
-				Result.append ("checked ")
+			create l_template.make
+			l_template.set_variable ("todo", todo)
+			l_result := l_template.render_file (document_root.appended ("\todo_item.html").name)
+			
+			if l_template.has_error and then attached l_template.last_error as err then
+				Result := "<div class=%"error%">" + err.to_string_8 + "</div>"
+			else
+				Result := l_result.to_string_8
 			end
-
-			Result.append ("hx-patch=%"/todos/" + todo.id.out +
-				"/toggle-complete%" hx-target=%"closest div%" " +
-				"hx-swap=%"outerHTML%">")
-
-				-- Description text with Alpine.js click handling
-			Result.append ("<div class=%"description%" x-show=%"id !== editingId%" x-on:click.stop=%"editingId = id%" >" + todo.description + "</div>")
-
-				-- Edit input with proper HTMX triggers
-			Result.append ("<input type=%"text%" name=%"description%" " +
-				"value=%"" + todo.description + "%"" +
-				"hx-trigger=%"blur, keyup[keyCode === 13]%" " +
-				"hx-patch=%"/todos/" + todo.id.out + "/description%" " +
-				"hx-target=%"closest div%" hx-swap=%"outerHTML%" " +
-				"x-show=%"id === editingId%" x-on:click.stop=%"%" >")
-
-				-- Delete button with confirmation and animation
-			Result.append ("<button class=%"plain%" " +
-				"hx-confirm=%"Really delete %"" + todo.description + "%"?%" " +
-				"hx-delete=%"/todos/" + todo.id.out + "%"" +
-				"hx-target=%"closest div%" hx-swap=%"delete swap:1s%">Delete</button>")
-
-			Result.append ("</div>")
 		end
 
 	add_todo (req: WSF_REQUEST; res: WSF_RESPONSE; a_description: STRING)
@@ -488,35 +469,6 @@ feature {NONE} -- Implementation
 			res.put_string (output)
 		end
 
-	htmx_request (req: WSF_REQUEST): HTMX_REQUEST
-			-- Helper to construct HTMX_REQUEST from EWF request.
-		local
-			l_headers: STRING_TABLE [READABLE_STRING_GENERAL]
-		do
-			create l_headers.make (8)
-			if attached meta_string (req, "HTTP_HX_REQUEST") as v then l_headers.put (v, "hx-request") end
-			if attached meta_string (req, "HTTP_HX_TARGET") as v then l_headers.put (v, "hx-target") end
-			if attached meta_string (req, "HTTP_HX_TRIGGER") as v then l_headers.put (v, "hx-trigger") end
-			if attached meta_string (req, "HTTP_HX_TRIGGER_NAME") as v then l_headers.put (v, "hx-trigger-name") end
-			if attached meta_string (req, "HTTP_HX_CURRENT_URL") as v then l_headers.put (v, "hx-current-url") end
-			if attached meta_string (req, "HTTP_HX_PROMPT") as v then l_headers.put (v, "hx-prompt") end
-			if attached meta_string (req, "HTTP_HX_BOOSTED") as v then l_headers.put (v, "hx-boosted") end
-			if attached meta_string (req, "HTTP_HX_HISTORY_RESTORE_REQUEST") as v then l_headers.put (v, "hx-history-restore-request") end
-			create Result.make (l_headers)
-		ensure
-			result_attached: Result /= Void
-		end
 
-	meta_string (req: WSF_REQUEST; a_name: READABLE_STRING_8): detachable READABLE_STRING_32
-			-- Get meta string variable by `a_name` case-insensitively.
-		do
-			if attached req.meta_string_variable (a_name.as_upper) as l_upper_val then
-				Result := l_upper_val
-			elseif attached req.meta_string_variable (a_name.as_lower) as l_lower_val then
-				Result := l_lower_val
-			elseif attached req.meta_string_variable (a_name) as l_orig_val then
-				Result := l_orig_val
-			end
-		end
 
 end
