@@ -150,6 +150,7 @@ feature -- Handlers
 			l_json: STRING
 			l_html: STRING
 			l_accept: detachable READABLE_STRING_32
+			l_htmx: HTMX_REQUEST
 		do
 				-- Get Accept header
 			l_accept := req.meta_string_variable ("HTTP_ACCEPT")
@@ -171,15 +172,23 @@ feature -- Handlers
 				l_json.append ("]")
 				new_response_json (req, res, l_json)
 			else
-					-- Return HTML response
-				create l_html.make_from_string (
-					"<div id=%"todo-list%" x-on:description-change=%"editingId = 0%">")
-				across l_todos as todo loop
-					l_html.append (todo_item_html (todo.item))
-				end
+					-- Check if this is a direct browser request (not via HTMX)
+				l_htmx := htmx_request (req)
+				if not l_htmx.is_htmx_request then
+						-- Redirect direct browser requests to the index.html page
+						-- so the user gets the fully styled web app layout.
+					res.redirect_now (req.script_url ("/index.html"))
+				else
+						-- Return HTML fragment for HTMX requests
+					create l_html.make_from_string (
+						"<div id=%"todo-list%" x-on:description-change=%"editingId = 0%">")
+					across l_todos as todo loop
+						l_html.append (todo_item_html (todo.item))
+					end
 
-				l_html.append ("</div>")
-				new_response_html (req, res, l_html)
+					l_html.append ("</div>")
+					new_response_html (req, res, l_html)
+				end
 			end
 		end
 
@@ -301,14 +310,8 @@ feature -- Handlers
 							l_todo.set_description (l_description)
 							l_todo_manager.save (l_todo)
 
-								-- Set HTMX trigger header
-							create h.make
-							h.put_header_key_value ("HX-Trigger", "description-change")
-							h.put_current_date
-							res.put_header_text (h.string)
-
 								-- Return updated todo HTML
-							new_response_html (req, res, todo_item_html (l_todo))
+							new_response_html_with_trigger (req, res, todo_item_html (l_todo), "description-change")
 						else
 								-- Empty description error
 							res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
@@ -364,14 +367,8 @@ feature -- Handlers
 					l_todo.set_completed (1 - l_todo.completed)
 					l_todo_manager.save (l_todo)
 
-						-- Set HTMX trigger header for status update
-					create h.make
-					h.put_header_key_value ("HX-Trigger", "status-change")
-					h.put_current_date
-					res.put_header_text (h.string)
-
 						-- Return updated todo HTML
-					new_response_html (req, res, todo_item_html (l_todo))
+					new_response_html_with_trigger (req, res, todo_item_html (l_todo), "status-change")
 				else
 					res.set_status_code ({HTTP_STATUS_CODE}.not_found)
 					res.put_string ("Todo not found")
@@ -440,19 +437,13 @@ feature {NONE} -- Implementation
 				create l_todo.make (0, a_description, 0)
 				l_todo_manager.save (l_todo)
 
-					-- Set HTMX trigger for status update
-				create h.make
-				h.put_header_key_value ("HX-Trigger", "status-change")
-				h.put_current_date
-				res.put_header_text (h.string)
-
 					-- Generate HTML for new todo item
 				create l_html.make_empty
 				l_html.append (todo_item_html (l_todo))
 					-- Clear any previous error message
 				l_html.append ("<div class=%"error%"></div>")
 
-				new_response_html (req, res, l_html)
+				new_response_html_with_trigger (req, res, l_html, "status-change")
 			else
 					-- Handle duplicate todo
 				create l_html.make_from_string ("<div class=%"error%">")
@@ -480,6 +471,52 @@ feature {NONE} -- Implementation
 		do
 			new_response_html (req, res,
 				"<div id=%"error%" hx-swap-oob=%"true%">" + message + "</div>")
+		end
+
+	new_response_html_with_trigger (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING; a_trigger: READABLE_STRING_8)
+			-- Send HTML response with an HTMX trigger header
+		local
+			h: HTTP_HEADER
+		do
+			create h.make
+			h.put_content_type_text_html
+			h.put_content_length (output.count)
+			h.put_current_date
+			h.put_header_key_value ("HX-Trigger", a_trigger)
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			res.put_header_text (h.string)
+			res.put_string (output)
+		end
+
+	htmx_request (req: WSF_REQUEST): HTMX_REQUEST
+			-- Helper to construct HTMX_REQUEST from EWF request.
+		local
+			l_headers: STRING_TABLE [READABLE_STRING_GENERAL]
+		do
+			create l_headers.make (8)
+			if attached meta_string (req, "HTTP_HX_REQUEST") as v then l_headers.put (v, "hx-request") end
+			if attached meta_string (req, "HTTP_HX_TARGET") as v then l_headers.put (v, "hx-target") end
+			if attached meta_string (req, "HTTP_HX_TRIGGER") as v then l_headers.put (v, "hx-trigger") end
+			if attached meta_string (req, "HTTP_HX_TRIGGER_NAME") as v then l_headers.put (v, "hx-trigger-name") end
+			if attached meta_string (req, "HTTP_HX_CURRENT_URL") as v then l_headers.put (v, "hx-current-url") end
+			if attached meta_string (req, "HTTP_HX_PROMPT") as v then l_headers.put (v, "hx-prompt") end
+			if attached meta_string (req, "HTTP_HX_BOOSTED") as v then l_headers.put (v, "hx-boosted") end
+			if attached meta_string (req, "HTTP_HX_HISTORY_RESTORE_REQUEST") as v then l_headers.put (v, "hx-history-restore-request") end
+			create Result.make (l_headers)
+		ensure
+			result_attached: Result /= Void
+		end
+
+	meta_string (req: WSF_REQUEST; a_name: READABLE_STRING_8): detachable READABLE_STRING_32
+			-- Get meta string variable by `a_name` case-insensitively.
+		do
+			if attached req.meta_string_variable (a_name.as_upper) as l_upper_val then
+				Result := l_upper_val
+			elseif attached req.meta_string_variable (a_name.as_lower) as l_lower_val then
+				Result := l_lower_val
+			elseif attached req.meta_string_variable (a_name) as l_orig_val then
+				Result := l_orig_val
+			end
 		end
 
 end

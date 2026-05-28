@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="ISO-8859-1"?>
+<?xml version="1.0" encoding="ISO-8859-1"?>
 <system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd" name="htmx_todo" uuid="92D0B593-043A-47F9-AA46-73687A3FE7F1">
 	<target name="common" abstract="true">
 		<file_rule>
@@ -14,19 +14,17 @@
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf">
 			<option warning="none"/>
 		</library>
+		<library name="glimmer" location="..\..\glimmer\glimmer.ecf" readonly="false"/>
 		<library name="http" location="$ISE_LIBRARY\contrib\library\network\protocol\http\http.ecf">
 			<option warning="none"/>
 		</library>
-		<library name="smarty" location="$ISE_LIBRARY\contrib\library\text\template\smarty\smarty.ecf" readonly="false">
-			<option warning="none"/>
-		</library>
+		<library name="sqlite" location="$ISE_LIBRARY\unstable\library\persistency\database\sqlite3\sqlite.ecf" readonly="false"/>
 		<library name="wsf" location="$ISE_LIBRARY\contrib\library\web\framework\ewf\wsf\wsf.ecf">
 			<option warning="none"/>
 		</library>
-		<library name="sqlite" location="$ISE_LIBRARY\unstable\library\persistency\database\sqlite3\sqlite.ecf" readonly="false"/>
 	</target>
 	<target name="htmx_todo_any" extends="common">
-		<root class="htmx_todo" feature="make_and_launch"/>
+		<root class="HTMX_TODO" feature="make_and_launch"/>
 		<option warning="none" is_obsolete_iteration="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>
@@ -44,13 +42,13 @@
 		</cluster>
 		<cluster name="src" location=".\src\" recursive="true">
 			<option warning="none" is_obsolete_iteration="true"/>
-			<class_option class="htmx_todo" warning="none" is_obsolete_iteration="true"/>
-			<class_option class="htmx_todo_EXECUTION" warning="none" is_obsolete_iteration="true"/>
+			<class_option class="HTMX_TODO" warning="none" is_obsolete_iteration="true"/>
+			<class_option class="HTMX_TODO_EXECUTION" warning="none" is_obsolete_iteration="true"/>
 		</cluster>
 	</target>
 	<target name="htmx_todo_standalone" extends="common">
-		<root class="htmx_todo" feature="make_and_launch"/>
-		<option warning="none" is_obsolete_iteration="true"/>
+		<root class="HTMX_TODO" feature="make_and_launch"/>
+		<option warning="warning" is_obsolete_iteration="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>
 		<variable name="httpd_ssl_disabled" value="true"/>
@@ -68,7 +66,7 @@
 		</cluster>
 	</target>
 	<target name="htmx_todo_libfcgi" extends="common">
-		<root class="htmx_todo" feature="make_and_launch"/>
+		<root class="HTMX_TODO" feature="make_and_launch"/>
 		<option warning="none" is_obsolete_iteration="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>
