@@ -157,59 +157,6 @@ feature -- Operations
 			Result := render_internal (template, template_name)
 		end
 
-	render_internal (template: READABLE_STRING_GENERAL; a_name: detachable READABLE_STRING_GENERAL): STRING_32
-			-- Render the template with current variables, optionally using cache key `a_name`
-		local
-			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
-			l_context: RENDER_CONTEXT
-			l_buffer: STRING_32
-			l_main_buffer: STRING_32
-		do
-			last_error := Void
-			l_nodes := get_compiled_template_with_name (template, a_name)
-			if has_error then
-				create Result.make_empty
-			else
-				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
-				
-				if attached layout as l_layout then
-					-- Layout is present. Render main template into a temporary buffer
-					create l_main_buffer.make (template.count * 2)
-					across l_nodes as node loop
-						node.item.render (l_context, l_main_buffer)
-					end
-					-- If there is non-section content and "content" is not already defined, store it in "content"
-					if not l_main_buffer.is_empty and then not l_context.sections.has ("content") then
-						l_context.sections.force (l_main_buffer, "content")
-					end
-					
-					-- Render layout
-					create l_buffer.make (l_layout.count * 2)
-					l_nodes := get_compiled_template_with_name (l_layout, Void)
-					if not has_error then
-						across l_nodes as node loop
-							node.item.render (l_context, l_buffer)
-						end
-					end
-				else
-					-- No layout, render main template directly to l_buffer
-					create l_buffer.make (template.count * 2)
-					across l_nodes as node loop
-						node.item.render (l_context, l_buffer)
-					end
-				end
-				
-				if l_context.has_error then
-					last_error := l_context.last_error
-					create Result.make_empty
-				else
-					-- Wipe sections at the end of rendering
-					sections.wipe_out
-					Result := l_buffer
-				end
-			end
-		end
-
 	render_file (filename: READABLE_STRING_GENERAL): STRING_32
 			-- Render template from a file
 		local
@@ -232,30 +179,14 @@ feature -- Operations
 
 	render_section (template: READABLE_STRING_GENERAL; section_name: READABLE_STRING_GENERAL): STRING_32
 			-- Render only the named section from the template
-		local
-			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
-			l_context: RENDER_CONTEXT
-			l_buffer: STRING_32
-			l_sec_name: STRING_32
 		do
-			last_error := Void
-			l_nodes := get_compiled_template (template)
-			if has_error then
-				create Result.make_empty
-			else
-				create l_sec_name.make_from_string (section_name.to_string_32)
-				if attached find_section_node (l_nodes, l_sec_name) as l_section then
-					create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
-					create l_buffer.make (128)
-					across l_section.body as node loop
-						node.item.render (l_context, l_buffer)
-					end
-					Result := l_buffer
-				else
-					last_error := "Section not found: " + l_sec_name
-					create Result.make_empty
-				end
-			end
+			Result := render_section_internal (template, section_name, Void)
+		end
+
+	render_section_with_name (template: READABLE_STRING_GENERAL; section_name: READABLE_STRING_GENERAL; template_name: READABLE_STRING_GENERAL): STRING_32
+			-- Render only the named section from the template, using named cache entry
+		do
+			Result := render_section_internal (template, section_name, template_name)
 		end
 
 	clear_cache
@@ -334,6 +265,87 @@ feature -- HTML Safety
 
 feature {NONE} -- Implementation
 
+	render_internal (template: READABLE_STRING_GENERAL; a_name: detachable READABLE_STRING_GENERAL): STRING_32
+			-- Render the template with current variables, optionally using cache key `a_name`
+		local
+			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
+			l_context: RENDER_CONTEXT
+			l_buffer: STRING_32
+			l_main_buffer: STRING_32
+		do
+			last_error := Void
+			l_nodes := get_compiled_template_with_name (template, a_name)
+			if has_error then
+				create Result.make_empty
+			else
+				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+				
+				if attached layout as l_layout then
+					-- Layout is present. Render main template into a temporary buffer
+					create l_main_buffer.make (template.count * 2)
+					across l_nodes as node loop
+						node.item.render (l_context, l_main_buffer)
+					end
+					-- If there is non-section content and "content" is not already defined, store it in "content"
+					if not l_main_buffer.is_empty and then not l_context.sections.has ("content") then
+						l_context.sections.force (l_main_buffer, "content")
+					end
+					
+					-- Render layout
+					create l_buffer.make (l_layout.count * 2)
+					l_nodes := get_compiled_template_with_name (l_layout, Void)
+					if not has_error then
+						across l_nodes as node loop
+							node.item.render (l_context, l_buffer)
+						end
+					end
+				else
+					-- No layout, render main template directly to l_buffer
+					create l_buffer.make (template.count * 2)
+					across l_nodes as node loop
+						node.item.render (l_context, l_buffer)
+					end
+				end
+				
+				if l_context.has_error then
+					last_error := l_context.last_error
+					create Result.make_empty
+				else
+					-- Wipe sections at the end of rendering
+					sections.wipe_out
+					Result := l_buffer
+				end
+			end
+		end
+
+	render_section_internal (template: READABLE_STRING_GENERAL; section_name: READABLE_STRING_GENERAL; a_name: detachable READABLE_STRING_GENERAL): STRING_32
+			-- Render only the named section from the template, optionally using cache key `a_name`
+		local
+			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
+			l_context: RENDER_CONTEXT
+			l_buffer: STRING_32
+			l_sec_name: STRING_32
+		do
+			last_error := Void
+			l_nodes := get_compiled_template_with_name (template, a_name)
+			if has_error then
+				create Result.make_empty
+			else
+				create l_sec_name.make_from_string (section_name.to_string_32)
+				if attached find_section_node (l_nodes, l_sec_name) as l_section then
+					create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+					create l_buffer.make (128)
+					across l_section.body as node loop
+						node.item.render (l_context, l_buffer)
+					end
+					Result := l_buffer
+				else
+					last_error := "Section not found: " + l_sec_name
+					create Result.make_empty
+				end
+			end
+		end
+
 	find_section_node (a_nodes: ARRAYED_LIST [TEMPLATE_NODE]; a_name: STRING_32): detachable SECTION_NODE
 			-- Recursively find section node in AST
 		local
@@ -374,22 +386,28 @@ feature {NONE} -- Implementation
 		do
 			if attached a_name as n then
 				create l_key.make_from_string (n.to_string_32)
-			else
-				create l_key.make_from_string ("#hash_" + a_template.hash_code.out)
-			end
-			
-			if compiled_templates_cache.has (l_key) and then attached compiled_templates_cache.item (l_key) as l_cached then
-				Result := l_cached
+				if compiled_templates_cache.has (l_key) and then attached compiled_templates_cache.item (l_key) as l_cached then
+					Result := l_cached
+				else
+					create l_parser.make
+					Result := l_parser.parse (a_template.to_string_32)
+					if l_parser.has_error then
+						last_error := l_parser.last_error
+					else
+						if compiled_templates_cache.count >= max_cache_size then
+							compiled_templates_cache.start
+							if not compiled_templates_cache.off then
+								compiled_templates_cache.remove (compiled_templates_cache.key_for_iteration)
+							end
+						end
+						compiled_templates_cache.force (Result, l_key)
+					end
+				end
 			else
 				create l_parser.make
 				Result := l_parser.parse (a_template.to_string_32)
 				if l_parser.has_error then
 					last_error := l_parser.last_error
-				else
-					if compiled_templates_cache.count >= max_cache_size then
-						compiled_templates_cache.wipe_out
-					end
-					compiled_templates_cache.force (Result, l_key)
 				end
 			end
 		end

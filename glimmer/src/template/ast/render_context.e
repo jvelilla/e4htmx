@@ -39,7 +39,6 @@ feature {NONE} -- Initialization
 			auto_escape := a_parent.auto_escape
 			cache := a_parent.cache
 			max_cache_size := a_parent.max_cache_size
-			last_error := a_parent.last_error
 		ensure
 			parent_set: parent_context = a_parent
 		end
@@ -177,22 +176,28 @@ feature -- Operations and Parsing
 		do
 			if attached a_name as n then
 				create l_key.make_from_string (n.to_string_32)
-			else
-				create l_key.make_from_string ("#hash_" + a_template.hash_code.out)
-			end
-			
-			if cache.has (l_key) and then attached cache.item (l_key) as l_cached then
-				Result := l_cached
+				if cache.has (l_key) and then attached cache.item (l_key) as l_cached then
+					Result := l_cached
+				else
+					create l_parser.make
+					Result := l_parser.parse (a_template.to_string_32)
+					if l_parser.has_error and then attached l_parser.last_error as err then
+						set_error (err)
+					end
+					if cache.count >= max_cache_size then
+						cache.start
+						if not cache.off then
+							cache.remove (cache.key_for_iteration)
+						end
+					end
+					cache.force (Result, l_key)
+				end
 			else
 				create l_parser.make
 				Result := l_parser.parse (a_template.to_string_32)
 				if l_parser.has_error and then attached l_parser.last_error as err then
 					set_error (err)
 				end
-				if cache.count >= max_cache_size then
-					cache.wipe_out
-				end
-				cache.force (Result, l_key)
 			end
 		end
 
@@ -221,6 +226,7 @@ feature -- Expression Evaluation
 			l_left, l_right: ANY
 			l_left_str: STRING_32
 			l_value: detachable ANY
+			i: INTEGER
 		do
 			expression.left_adjust
 			expression.right_adjust
@@ -228,14 +234,24 @@ feature -- Expression Evaluation
 			if expression.has_substring (" and ") then
 				l_parts := split_string (expression, " and ")
 				Result := True
-				across l_parts as part loop
-					Result := Result and evaluate_expression (part.item)
+				from
+					i := 1
+				until
+					i > l_parts.count or else not Result
+				loop
+					Result := evaluate_expression (l_parts.i_th (i))
+					i := i + 1
 				end
 			elseif expression.has_substring (" or ") then
 				l_parts := split_string (expression, " or ")
 				Result := False
-				across l_parts as part loop
-					Result := Result or evaluate_expression (part.item)
+				from
+					i := 1
+				until
+					i > l_parts.count or else Result
+				loop
+					Result := evaluate_expression (l_parts.i_th (i))
+					i := i + 1
 				end
 			elseif expression.starts_with ("not ") then
 				Result := not evaluate_expression (expression.substring (5, expression.count))

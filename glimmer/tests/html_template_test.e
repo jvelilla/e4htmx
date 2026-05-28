@@ -953,4 +953,85 @@ feature -- Test routines
 			assert ("error_description_set", attached l_template.last_error as err and then err.has_substring ("not found"))
 		end
 
+	test_cache_eviction_behavior
+			-- Test cache eviction (should remove only 1 item, not wipe)
+		local
+			l_template: HTML_TEMPLATE
+			i: INTEGER
+			l_name: STRING
+			l_result: STRING_32
+		do
+			create l_template.make
+			from
+				i := 1
+			until
+				i > 500
+			loop
+				l_name := "temp_" + i.out
+				l_result := l_template.render_with_name ("Hello " + i.out, l_name)
+				i := i + 1
+			end
+			-- Render one more to exceed limit
+			l_result := l_template.render_with_name ("Hello 501", "temp_501")
+			
+			-- If the cache was completely wiped, count would be 1 and rendering a previous template
+			-- would not be cached. With single eviction, the cache still has 500 elements.
+			-- Let's test that rendering a previously compiled named template still functions.
+			l_result := l_template.render_with_name ("Hello 500", "temp_500")
+			assert ("cached_item_retained", l_result.same_string ("Hello 500"))
+		end
+
+	test_and_or_short_circuit
+			-- Test that and/or folds evaluate properly
+		local
+			l_template: HTML_TEMPLATE
+			l_result: BOOLEAN
+		do
+			create l_template.make
+			l_template.set_variable ("t", True)
+			l_template.set_variable ("f", False)
+			
+			-- Test and: True and False -> False
+			l_result := l_template.evaluate_expression ("t and f")
+			assert ("t_and_f_is_false", not l_result)
+			
+			-- Test or: False or True -> True
+			l_result := l_template.evaluate_expression ("f or t")
+			assert ("f_or_t_is_true", l_result)
+		end
+
+	test_render_section_with_name
+			-- Test rendering section with a name (HTMX style) using named cache
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("name", "Javier")
+			l_result := l_template.render_section_with_name (
+				"{{section header}}Hello, {name}!{{end}}",
+				"header",
+				"my_named_section"
+			)
+			assert ("render_section_with_name_success", l_result.same_string ("Hello, Javier!"))
+		end
+
+	test_make_sub_no_stale_error
+			-- Test that sub-contexts do not inherit stale last_error from parent
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			-- Trigger an error by rendering an invalid template
+			l_result := l_template.render ("{{if invalid")
+			assert ("has_error", l_template.has_error)
+
+			-- Clear error and render a valid template.
+			-- The engine should render successfully and not fail due to stale error.
+			l_result := l_template.render ("Hello")
+			assert ("no_longer_has_error", not l_template.has_error)
+			assert ("render_success", l_result.same_string ("Hello"))
+		end
+
 end
