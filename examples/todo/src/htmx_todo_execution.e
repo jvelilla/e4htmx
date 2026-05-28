@@ -1,4 +1,4 @@
-﻿note
+note
 	description: "[
 			application execution
 		]"
@@ -65,8 +65,6 @@ feature -- Router
 			create Result
 			Result.enable_patch
 			Result.lock
-		ensure
-			methods_get_not_void: Result /= Void
 		end
 
 feature -- Configuration

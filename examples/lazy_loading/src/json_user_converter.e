@@ -12,8 +12,6 @@ feature -- Conversion
 
 	from_json (a_json: JSON_OBJECT): detachable USER
 			-- Create a new USER instance from JSON object
-		require
-			json_not_void: a_json /= Void
 		local
 			l_id: INTEGER
 			l_name, l_email: STRING
@@ -51,8 +49,6 @@ feature -- Conversion
 					end
 				end
 			end
-		ensure
-			result_not_void: attached Result
 		end
 
 end

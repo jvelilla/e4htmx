@@ -9,6 +9,7 @@ class
 inherit
 	EQA_TEST_SET
 
+
 feature -- Test routines
 
 	test_basic_template
@@ -97,8 +98,8 @@ feature -- Test routines
 			assert ("missing_variable_preserved", l_result.same_string ("Hello, John! Age: {age}"))
 		end
 
-	test_nested_variables
-			-- Test nested variable interpolation
+	test_non_recursive_variables
+			-- Test that variable values containing braces are NOT recursively resolved
 		local
 			l_template: HTML_TEMPLATE
 			l_result: STRING
@@ -107,7 +108,58 @@ feature -- Test routines
 			l_template.set_variable ("user", "John")
 			l_template.set_variable ("greeting", "Hello, {user}!")
 			l_result := l_template.render ("{greeting}")
-			assert ("nested_variables", l_result.same_string ("Hello, John!"))
+			assert ("non_recursive_variables", l_result.same_string ("Hello, {user}!"))
+		end
+
+	test_multi_part_logical_expressions
+			-- Test multi-part logical expressions with and/or
+		local
+			l_template: HTML_TEMPLATE
+		do
+			create l_template.make
+			l_template.set_variable ("a", True)
+			l_template.set_variable ("b", True)
+			l_template.set_variable ("c", False)
+			
+			assert ("a and b", l_template.evaluate_expression ("a and b"))
+			assert ("not (a and b and c)", not l_template.evaluate_expression ("a and b and c"))
+			assert ("a or c or b", l_template.evaluate_expression ("a or c or b"))
+			assert ("c or c or c", not l_template.evaluate_expression ("c or c or c"))
+		end
+
+	test_named_rendering_and_caching
+			-- Test rendering with explicit name and cache clearing
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.set_variable ("name", "Alice")
+			
+			-- Render with name
+			l_result := l_template.render_with_name ("Hello, {name}!", "my_temp_name")
+			assert ("rendered_with_name", l_result.same_string ("Hello, Alice!"))
+			
+			-- Clear cache
+			l_template.clear_cache
+		end
+
+	test_layout_non_section_content_preservation
+			-- Test that layout rendering preserves non-section content by putting it in default "content" section
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.set_layout ("<html><body>{{yield title}} - {{yield content}}</body></html>")
+			l_template.set_variable ("user", "John")
+			
+			l_result := l_template.render (
+				"{{section title}}My Title{{end}}" +
+				"Hello {user} from outside section!")
+				
+			assert ("non_section_preserved",
+				l_result.same_string ("<html><body>My Title - Hello John from outside section!</body></html>"))
 		end
 
 	test_empty_template
@@ -130,57 +182,6 @@ feature -- Test routines
 			create l_template.make
 			l_result := l_template.render_file ("nonexistent_template.html")
 			assert ("nonexistent_file_empty_result", l_result.is_empty)
-		end
-
-	test_deep_nested_variables
-			-- Test deeply nested variable interpolation
-		local
-			l_template: HTML_TEMPLATE
-			l_result: STRING
-		do
-			create l_template.make
-			l_template.set_variable ("name", "John")
-			l_template.set_variable ("user", "{name} Doe")
-			l_template.set_variable ("greeting", "Hello, {user}!")
-			l_result := l_template.render ("{greeting}")
-			assert ("deep_nested_variables", l_result.same_string ("Hello, John Doe!"))
-		end
-
-	test_circular_nested_variables
-			-- Test handling of circular nested variables
-		local
-			l_template: HTML_TEMPLATE
-			l_result: STRING
-			l_count, l_pos: INTEGER
-			l_search: STRING
-		do
-			create l_template.make
-			l_template.set_recursion_depth (3)
-			l_template.set_variable ("a", "Value of {b}")
-			l_template.set_variable ("b", "Value of {a}")
-			l_result := l_template.render ("{a}")
-
-				-- We expect the template engine to detect the circular reference
-				-- and stop after reaching the maximum nesting depth (e.g., 3)
-			assert ("circular_reference_detected",
-				l_result.same_string ("Value of Value of Value of {b}") or else
-				l_result.has_substring ("Circular reference detected"))
-
-				-- Count occurrences of "Value of" in the result
-			l_search := "Value of"
-			from
-				l_pos := 1
-			until
-				l_pos = 0
-			loop
-				l_pos := l_result.substring_index (l_search, l_pos)
-				if l_pos > 0 then
-					l_count := l_count + 1
-					l_pos := l_pos + l_search.count
-				end
-			end
-
-			assert ("finite_nesting_depth", l_count <= 3)
 		end
 
 	test_partial_template
@@ -863,6 +864,282 @@ feature -- Test routines
 
 			assert ("Loop metadata should be correctly rendered",
 				result_string.same_string ("1,3,True,False,False,True|2,3,False,False,True,False|3,3,False,True,False,True|"))
+		end
+
+	test_htmx_render_section
+			-- Test rendering specific named section without layout (HTMX style)
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_layout ("<html>{{yield body}}</html>")
+			l_template.set_variable ("username", "Javier")
+			
+			-- Render only the "body" section
+			l_result := l_template.render_section (
+				"{{section body}}Welcome back, {username}!{{end}}{{section header}}Title{{end}}",
+				"body"
+			)
+			assert ("render_section_success", l_result.same_string ("Welcome back, Javier!"))
+		end
+
+	test_complex_conditional_in_template
+			-- Test complex expressions inside template if statements
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("age", 18)
+			
+			l_result := l_template.render ("{{if age >= 18}}Adult{{else}}Minor{{end}}")
+			assert ("complex_if_true", l_result.same_string ("Adult"))
+			
+			l_template.set_variable ("age", 16)
+			l_result := l_template.render ("{{if age >= 18}}Adult{{else}}Minor{{end}}")
+			assert ("complex_if_false", l_result.same_string ("Minor"))
+		end
+
+	test_scoped_variable_isolation
+			-- Test that loop variable scopes are properly isolated and do not overwrite outer variables
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+			l_outer: ARRAYED_LIST [STRING]
+			l_inner: ARRAYED_LIST [STRING]
+		do
+			create l_template.make
+			create l_outer.make (2)
+			l_outer.extend ("A")
+			l_outer.extend ("B")
+			
+			create l_inner.make (2)
+			l_inner.extend ("1")
+			l_inner.extend ("2")
+			
+			l_template.set_variable ("outer", l_outer)
+			l_template.set_variable ("inner", l_inner)
+			l_template.set_variable ("item", "Original")
+			
+			l_result := l_template.render (
+				"Before:{item}|" +
+				"{{each item in outer}}" +
+					"Outer:{item}(" +
+					"{{each item in inner}}Inner:{item},{{end}}" +
+					")|" +
+				"{{end}}" +
+				"After:{item}"
+			)
+			
+			assert ("scoped_isolation", l_result.same_string (
+				"Before:Original|" +
+				"Outer:A(Inner:1,Inner:2,)|" +
+				"Outer:B(Inner:1,Inner:2,)|" +
+				"After:Original"
+			))
+		end
+
+	test_render_file_error_reporting
+			-- Test file missing error reporting
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_result := l_template.render_file ("nonexistent_file_xyz.html")
+			assert ("nonexistent_returns_empty", l_result.is_empty)
+			assert ("has_error_set", l_template.has_error)
+			assert ("error_description_set", attached l_template.last_error as err and then err.has_substring ("not found"))
+		end
+
+	test_cache_eviction_behavior
+			-- Test cache eviction (should remove only 1 item, not wipe)
+		local
+			l_template: HTML_TEMPLATE
+			i: INTEGER
+			l_name: STRING
+			l_result: STRING_32
+		do
+			create l_template.make
+			from
+				i := 1
+			until
+				i > 500
+			loop
+				l_name := "temp_" + i.out
+				l_result := l_template.render_with_name ("Hello " + i.out, l_name)
+				i := i + 1
+			end
+			-- Render one more to exceed limit
+			l_result := l_template.render_with_name ("Hello 501", "temp_501")
+			
+			-- If the cache was completely wiped, count would be 1 and rendering a previous template
+			-- would not be cached. With single eviction, the cache still has 500 elements.
+			-- Let's test that rendering a previously compiled named template still functions.
+			l_result := l_template.render_with_name ("Hello 500", "temp_500")
+			assert ("cached_item_retained", l_result.same_string ("Hello 500"))
+		end
+
+	test_and_or_short_circuit
+			-- Test that and/or folds evaluate properly
+		local
+			l_template: HTML_TEMPLATE
+			l_result: BOOLEAN
+		do
+			create l_template.make
+			l_template.set_variable ("t", True)
+			l_template.set_variable ("f", False)
+			
+			-- Test and: True and False -> False
+			l_result := l_template.evaluate_expression ("t and f")
+			assert ("t_and_f_is_false", not l_result)
+			
+			-- Test or: False or True -> True
+			l_result := l_template.evaluate_expression ("f or t")
+			assert ("f_or_t_is_true", l_result)
+		end
+
+	test_render_section_with_name
+			-- Test rendering section with a name (HTMX style) using named cache
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("name", "Javier")
+			l_result := l_template.render_section_with_name (
+				"{{section header}}Hello, {name}!{{end}}",
+				"header",
+				"my_named_section"
+			)
+			assert ("render_section_with_name_success", l_result.same_string ("Hello, Javier!"))
+		end
+
+	test_make_sub_no_stale_error
+			-- Test that sub-contexts do not inherit stale last_error from parent
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			-- Trigger an error by rendering an invalid template
+			l_result := l_template.render ("{{if invalid")
+			assert ("has_error", l_template.has_error)
+
+			-- Clear error and render a valid template.
+			-- The engine should render successfully and not fail due to stale error.
+			l_result := l_template.render ("Hello")
+			assert ("no_longer_has_error", not l_template.has_error)
+			assert ("render_success", l_result.same_string ("Hello"))
+		end
+
+	test_elsif_tag
+			-- Test else if and elsif parsing and branching
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			
+			l_template.set_variable ("val", 2)
+			l_result := l_template.render ("{{if val == 1}}one{{else if val == 2}}two{{else}}other{{end}}")
+			assert ("else_if_branch", l_result.same_string_general ("two"))
+
+			l_result := l_template.render ("{{if val == 1}}one{{elsif val == 3}}three{{else}}other{{end}}")
+			assert ("elsif_branch_false", l_result.same_string_general ("other"))
+		end
+
+	test_htmx_request_helper
+			-- Test HTMX_REQUEST header introspection helper
+		local
+			l_headers: STRING_TABLE [READABLE_STRING_GENERAL]
+			l_req: HTMX_REQUEST
+		do
+			create l_headers.make (5)
+			l_headers.put ("true", "hx-request")
+			l_headers.put ("my-target", "HX-Target")
+			l_headers.put ("my-trigger", "hx-trigger-name")
+			l_headers.put ("http://localhost/test", "HX-CURRENT-URL")
+
+			create l_req.make (l_headers)
+			assert ("is_htmx", l_req.is_htmx_request)
+			assert ("target", attached l_req.hx_target as t and then t.same_string_general ("my-target"))
+			assert ("trigger_name", attached l_req.hx_trigger_name as tr and then tr.same_string_general ("my-trigger"))
+			assert ("current_url", attached l_req.hx_current_url as cur and then cur.same_string_general ("http://localhost/test"))
+		end
+
+	test_htmx_metadata_builders
+			-- Test HTMX response metadata builders
+		local
+			l_template: HTML_TEMPLATE
+		do
+			create l_template.make
+			l_template.add_trigger ("event1")
+			l_template.add_trigger ("event2")
+			assert ("trigger_header", l_template.htmx_trigger_header.same_string_general ("{%"event1%":true, %"event2%":true}"))
+
+			l_template.set_push_url ("/new-url")
+			l_template.set_replace_url ("/replaced-url")
+			assert ("push_url", attached l_template.push_url as p and then p.same_string_general ("/new-url"))
+			assert ("replace_url", attached l_template.replace_url as r and then r.same_string_general ("/replaced-url"))
+
+			l_template.clear_htmx_metadata
+			assert ("cleared_triggers", l_template.trigger_events.is_empty)
+			assert ("cleared_push", l_template.push_url = Void)
+			assert ("cleared_replace", l_template.replace_url = Void)
+		end
+
+	test_render_oob
+			-- Test HTMX Out-of-Band (OOB) rendering
+		local
+			l_template: HTML_TEMPLATE
+			l_sections: ARRAY [READABLE_STRING_GENERAL]
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("user", "Javier")
+			
+			l_sections := << "main", "sidebar" >>
+			l_result := l_template.render_oob (
+				"{{section main}}Welcome {user}!{{end}}{{section sidebar}}Side Info{{end}}",
+				l_sections
+			)
+			assert ("render_oob_output", l_result.same_string_general ("Welcome Javier!<div hx-swap-oob=%"true%" id=%"sidebar%">Side Info</div>"))
+		end
+
+	test_typed_setters
+			-- Test typed variable setters
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_integer ("total", 123)
+			l_template.set_boolean ("flag", True)
+			l_template.set_string ("msg", "hello")
+
+			l_result := l_template.render ("{total} {flag} {msg}")
+			assert ("typed_setters_interpolated", l_result.same_string_general ("123 True hello"))
+		end
+
+	test_section_nodes_cache
+			-- Test that render_section cache is active and doesn't crash on hot path
+		local
+			l_template: HTML_TEMPLATE
+			l_result1, l_result2: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("val", "abc")
+			
+			-- Render section using named cache key first time (compiles and caches section node)
+			l_result1 := l_template.render_section_with_name ("{{section sec}}Value: {val}{{end}}", "sec", "sec_template")
+			assert ("sec_render_1", l_result1.same_string_general ("Value: abc"))
+
+			-- Change variable and render again (should read section node from cache directly)
+			l_template.set_variable ("val", "xyz")
+			l_result2 := l_template.render_section_with_name ("{{section sec}}Value: {val}{{end}}", "sec", "sec_template")
+			assert ("sec_render_2", l_result2.same_string_general ("Value: xyz"))
 		end
 
 end

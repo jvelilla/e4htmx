@@ -28,25 +28,18 @@ feature -- Operations
 
     set_variable (name: STRING; value: ANY)
             -- Set a template variable
-        require
-            name_not_void: name /= Void
-            value_not_void: value /= Void
         do
             variables.force (value, name)
         end
 
     render (template: STRING): STRING
             -- Render the template with current variables
-        require
-            template_not_void: template /= Void
         do
             Result := esx (template, variables)
         end
 
     render_file (filename: STRING): STRING
             -- Render template from a file
-        require
-            filename_not_void: filename /= Void
         local
             l_file: PLAIN_TEXT_FILE
             l_template: STRING
@@ -67,8 +60,6 @@ feature -- HTML Safety
 
     escape_html (str: STRING): STRING
             -- Convert HTML special characters to entities
-        require
-            str_not_void: str /= Void
         do
             create Result.make_from_string (str)
             Result.replace_substring_all ("&", "&amp;")
@@ -80,8 +71,6 @@ feature -- HTML Safety
 
     render_safe (template: STRING): STRING
             -- Render template with HTML-escaped variables
-        require
-            template_not_void: template /= Void
         local
             l_safe_vars: STRING_TABLE [ANY]
         do
