@@ -32,7 +32,7 @@ feature -- Rendering
 		do
 			if not a_context.is_recursion_depth_reached then
 				if a_context.partials.has (name) and then attached a_context.partials.item (name) as l_partial then
-					a_context.engine.render_partial (l_partial, a_context, a_buffer)
+					a_context.render_partial (l_partial, name, a_buffer)
 				end
 			end
 		end

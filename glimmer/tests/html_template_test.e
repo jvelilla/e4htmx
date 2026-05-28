@@ -98,8 +98,8 @@ feature -- Test routines
 			assert ("missing_variable_preserved", l_result.same_string ("Hello, John! Age: {age}"))
 		end
 
-	test_nested_variables
-			-- Test nested variable interpolation
+	test_non_recursive_variables
+			-- Test that variable values containing braces are NOT recursively resolved
 		local
 			l_template: HTML_TEMPLATE
 			l_result: STRING
@@ -108,7 +108,58 @@ feature -- Test routines
 			l_template.set_variable ("user", "John")
 			l_template.set_variable ("greeting", "Hello, {user}!")
 			l_result := l_template.render ("{greeting}")
-			assert ("nested_variables", l_result.same_string ("Hello, John!"))
+			assert ("non_recursive_variables", l_result.same_string ("Hello, {user}!"))
+		end
+
+	test_multi_part_logical_expressions
+			-- Test multi-part logical expressions with and/or
+		local
+			l_template: HTML_TEMPLATE
+		do
+			create l_template.make
+			l_template.set_variable ("a", True)
+			l_template.set_variable ("b", True)
+			l_template.set_variable ("c", False)
+			
+			assert ("a and b", l_template.evaluate_expression ("a and b"))
+			assert ("not (a and b and c)", not l_template.evaluate_expression ("a and b and c"))
+			assert ("a or c or b", l_template.evaluate_expression ("a or c or b"))
+			assert ("c or c or c", not l_template.evaluate_expression ("c or c or c"))
+		end
+
+	test_named_rendering_and_caching
+			-- Test rendering with explicit name and cache clearing
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.set_variable ("name", "Alice")
+			
+			-- Render with name
+			l_result := l_template.render_with_name ("Hello, {name}!", "my_temp_name")
+			assert ("rendered_with_name", l_result.same_string ("Hello, Alice!"))
+			
+			-- Clear cache
+			l_template.clear_cache
+		end
+
+	test_layout_non_section_content_preservation
+			-- Test that layout rendering preserves non-section content by putting it in default "content" section
+		local
+			l_template: HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.set_layout ("<html><body>{{yield title}} - {{yield content}}</body></html>")
+			l_template.set_variable ("user", "John")
+			
+			l_result := l_template.render (
+				"{{section title}}My Title{{end}}" +
+				"Hello {user} from outside section!")
+				
+			assert ("non_section_preserved",
+				l_result.same_string ("<html><body>My Title - Hello John from outside section!</body></html>"))
 		end
 
 	test_empty_template
@@ -131,57 +182,6 @@ feature -- Test routines
 			create l_template.make
 			l_result := l_template.render_file ("nonexistent_template.html")
 			assert ("nonexistent_file_empty_result", l_result.is_empty)
-		end
-
-	test_deep_nested_variables
-			-- Test deeply nested variable interpolation
-		local
-			l_template: HTML_TEMPLATE
-			l_result: STRING
-		do
-			create l_template.make
-			l_template.set_variable ("name", "John")
-			l_template.set_variable ("user", "{name} Doe")
-			l_template.set_variable ("greeting", "Hello, {user}!")
-			l_result := l_template.render ("{greeting}")
-			assert ("deep_nested_variables", l_result.same_string ("Hello, John Doe!"))
-		end
-
-	test_circular_nested_variables
-			-- Test handling of circular nested variables
-		local
-			l_template: HTML_TEMPLATE
-			l_result: STRING
-			l_count, l_pos: INTEGER
-			l_search: STRING
-		do
-			create l_template.make
-			l_template.set_recursion_depth (3)
-			l_template.set_variable ("a", "Value of {b}")
-			l_template.set_variable ("b", "Value of {a}")
-			l_result := l_template.render ("{a}")
-
-				-- We expect the template engine to detect the circular reference
-				-- and stop after reaching the maximum nesting depth (e.g., 3)
-			assert ("circular_reference_detected",
-				l_result.same_string ("Value of Value of Value of {b}") or else
-				l_result.has_substring ("Circular reference detected"))
-
-				-- Count occurrences of "Value of" in the result
-			l_search := "Value of"
-			from
-				l_pos := 1
-			until
-				l_pos = 0
-			loop
-				l_pos := l_result.substring_index (l_search, l_pos)
-				if l_pos > 0 then
-					l_count := l_count + 1
-					l_pos := l_pos + l_search.count
-				end
-			end
-
-			assert ("finite_nesting_depth", l_count <= 3)
 		end
 
 	test_partial_template

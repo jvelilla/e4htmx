@@ -9,20 +9,22 @@ create
 
 feature {NONE} -- Initialization
 
-	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_engine: HTML_TEMPLATE)
+	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_cache: HASH_TABLE [ARRAYED_LIST [TEMPLATE_NODE], STRING_32]; a_max_cache_size: INTEGER)
 			-- Initialize root context with initial bindings and config
 		do
 			variables := a_variables
 			partials := a_partials
 			max_recursion_depth := a_max_recursion_depth
 			auto_escape := a_auto_escape
-			engine := a_engine
+			cache := a_cache
+			max_cache_size := a_max_cache_size
 			current_recursion_depth := 0
 			create sections.make (5)
+			last_error := Void
 		ensure
 			variables_set: variables = a_variables
 			partials_set: partials = a_partials
-			engine_set: engine = a_engine
+			cache_set: cache = a_cache
 		end
 
 	make_sub (a_parent: RENDER_CONTEXT)
@@ -35,7 +37,9 @@ feature {NONE} -- Initialization
 			max_recursion_depth := a_parent.max_recursion_depth
 			current_recursion_depth := a_parent.current_recursion_depth
 			auto_escape := a_parent.auto_escape
-			engine := a_parent.engine
+			cache := a_parent.cache
+			max_cache_size := a_parent.max_cache_size
+			last_error := a_parent.last_error
 		ensure
 			parent_set: parent_context = a_parent
 		end
@@ -60,8 +64,14 @@ feature -- Access
 	auto_escape: BOOLEAN
 			-- Should variables be automatically HTML escaped?
 
-	engine: HTML_TEMPLATE
-			-- Reference to the template engine
+	cache: HASH_TABLE [ARRAYED_LIST [TEMPLATE_NODE], STRING_32]
+			-- Compilation cache passed from the engine
+
+	max_cache_size: INTEGER
+			-- Maximum capacity of the compilation cache
+
+	last_error: detachable STRING_32
+			-- Description of the last parsing or compilation error
 
 	parent_context: detachable RENDER_CONTEXT
 			-- Parent scope context if nested
@@ -83,6 +93,12 @@ feature -- Access
 		end
 
 feature -- Status Report
+
+	has_error: BOOLEAN
+			-- Was there an error?
+		do
+			Result := last_error /= Void
+		end
 
 	is_recursion_depth_reached: BOOLEAN
 			-- Has the recursion depth limit been reached?
@@ -111,6 +127,90 @@ feature {RENDER_CONTEXT} -- Implementation
 			depth_set: current_recursion_depth = a_depth
 		end
 
+feature -- Operations and Parsing
+
+	set_error (a_error: STRING_32)
+			-- Set the last error and propagate to parent context
+		do
+			last_error := a_error
+			if attached parent_context as p then
+				p.set_error (a_error)
+			end
+		end
+
+	escape_html (str: READABLE_STRING_GENERAL): STRING_32
+			-- Convert HTML special characters to entities in a single pass
+		local
+			i: INTEGER
+			c: CHARACTER_32
+		do
+			create Result.make (str.count + 20)
+			from
+				i := 1
+			until
+				i > str.count
+			loop
+				c := str.item (i)
+				inspect c
+				when '&' then
+					Result.append ("&amp;")
+				when '<' then
+					Result.append ("&lt;")
+				when '>' then
+					Result.append ("&gt;")
+				when '"' then
+					Result.append ("&quot;")
+				when '%'' then
+					Result.append ("&#39;")
+				else
+					Result.extend (c)
+				end
+				i := i + 1
+			end
+		end
+
+	get_compiled_template_with_name (a_template: READABLE_STRING_GENERAL; a_name: detachable READABLE_STRING_GENERAL): ARRAYED_LIST [TEMPLATE_NODE]
+			-- Compile template string, returning cached AST if already compiled
+		local
+			l_key: STRING_32
+			l_parser: TEMPLATE_PARSER
+		do
+			if attached a_name as n then
+				create l_key.make_from_string (n.to_string_32)
+			else
+				create l_key.make_from_string ("#hash_" + a_template.hash_code.out)
+			end
+			
+			if cache.has (l_key) and then attached cache.item (l_key) as l_cached then
+				Result := l_cached
+			else
+				create l_parser.make
+				Result := l_parser.parse (a_template.to_string_32)
+				if l_parser.has_error and then attached l_parser.last_error as err then
+					set_error (err)
+				end
+				if cache.count >= max_cache_size then
+					cache.wipe_out
+				end
+				cache.force (Result, l_key)
+			end
+		end
+
+	render_partial (template_str: STRING_32; a_name: STRING_32; a_buffer: STRING_32)
+			-- Compile and render partial template directly into `a_buffer` using incremented depth context
+		local
+			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
+			l_sub_context: RENDER_CONTEXT
+		do
+			l_nodes := get_compiled_template_with_name (template_str, a_name)
+			if not has_error then
+				l_sub_context := incremented_depth_context
+				across l_nodes as node loop
+					node.item.render (l_sub_context, a_buffer)
+				end
+			end
+		end
+
 feature -- Expression Evaluation
 
 	evaluate_expression (expression: STRING_32): BOOLEAN
@@ -127,10 +227,16 @@ feature -- Expression Evaluation
 
 			if expression.has_substring (" and ") then
 				l_parts := split_string (expression, " and ")
-				Result := evaluate_expression (l_parts.first) and evaluate_expression (l_parts.last)
+				Result := True
+				across l_parts as part loop
+					Result := Result and evaluate_expression (part.item)
+				end
 			elseif expression.has_substring (" or ") then
 				l_parts := split_string (expression, " or ")
-				Result := evaluate_expression (l_parts.first) or evaluate_expression (l_parts.last)
+				Result := False
+				across l_parts as part loop
+					Result := Result or evaluate_expression (part.item)
+				end
 			elseif expression.starts_with ("not ") then
 				Result := not evaluate_expression (expression.substring (5, expression.count))
 			elseif expression.starts_with ("exists ") then

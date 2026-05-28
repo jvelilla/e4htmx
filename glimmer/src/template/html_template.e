@@ -56,11 +56,8 @@ feature -- Status Report
 
 	is_reserved_name (name: READABLE_STRING_GENERAL): BOOLEAN
 			-- Check if name is reserved for loop metadata
-		local
-			l_name: STRING_32
 		do
-			create l_name.make_from_string (name.to_string_32)
-			Result := reserved_names.has (l_name)
+			Result := across reserved_names as r some r.item.same_string_general (name) end
 		end
 
 feature -- Element Change
@@ -150,39 +147,66 @@ feature -- Operations
 
 	render (template: READABLE_STRING_GENERAL): STRING_32
 			-- Render the template with current variables
+		do
+			Result := render_internal (template, Void)
+		end
+
+	render_with_name (template: READABLE_STRING_GENERAL; template_name: READABLE_STRING_GENERAL): STRING_32
+			-- Render the template with current variables, using named cache entry
+		do
+			Result := render_internal (template, template_name)
+		end
+
+	render_internal (template: READABLE_STRING_GENERAL; a_name: detachable READABLE_STRING_GENERAL): STRING_32
+			-- Render the template with current variables, optionally using cache key `a_name`
 		local
 			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
 			l_context: RENDER_CONTEXT
 			l_buffer: STRING_32
+			l_main_buffer: STRING_32
 		do
 			last_error := Void
-			l_nodes := get_compiled_template (template)
+			l_nodes := get_compiled_template_with_name (template, a_name)
 			if has_error then
 				create Result.make_empty
 			else
-				create l_context.make (variables, partials, recursion_depth, auto_escape, Current)
-				create l_buffer.make (template.count * 2)
+				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
 				
-				-- Render main template
-				across l_nodes as node loop
-					node.item.render (l_context, l_buffer)
-				end
-				
-				-- If we have a layout, process it last
 				if attached layout as l_layout then
+					-- Layout is present. Render main template into a temporary buffer
+					create l_main_buffer.make (template.count * 2)
+					across l_nodes as node loop
+						node.item.render (l_context, l_main_buffer)
+					end
+					-- If there is non-section content and "content" is not already defined, store it in "content"
+					if not l_main_buffer.is_empty and then not l_context.sections.has ("content") then
+						l_context.sections.force (l_main_buffer, "content")
+					end
+					
+					-- Render layout
 					create l_buffer.make (l_layout.count * 2)
-					l_nodes := get_compiled_template (l_layout)
+					l_nodes := get_compiled_template_with_name (l_layout, Void)
 					if not has_error then
 						across l_nodes as node loop
 							node.item.render (l_context, l_buffer)
 						end
 					end
+				else
+					-- No layout, render main template directly to l_buffer
+					create l_buffer.make (template.count * 2)
+					across l_nodes as node loop
+						node.item.render (l_context, l_buffer)
+					end
 				end
 				
-				-- Wipe sections at the end of rendering
-				sections.wipe_out
-				
-				Result := l_buffer
+				if l_context.has_error then
+					last_error := l_context.last_error
+					create Result.make_empty
+				else
+					-- Wipe sections at the end of rendering
+					sections.wipe_out
+					Result := l_buffer
+				end
 			end
 		end
 
@@ -199,7 +223,7 @@ feature -- Operations
 				l_file.read_stream (l_file.count)
 				create l_template.make_from_string (l_file.last_string.to_string_32)
 				l_file.close
-				Result := render (l_template)
+				Result := render_with_name (l_template, filename)
 			else
 				last_error := "Template file not found or not readable: " + filename.to_string_32
 				create Result.make_empty
@@ -221,7 +245,7 @@ feature -- Operations
 			else
 				create l_sec_name.make_from_string (section_name.to_string_32)
 				if attached find_section_node (l_nodes, l_sec_name) as l_section then
-					create l_context.make (variables, partials, recursion_depth, auto_escape, Current)
+					create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
 					create l_buffer.make (128)
 					across l_section.body as node loop
 						node.item.render (l_context, l_buffer)
@@ -234,6 +258,15 @@ feature -- Operations
 			end
 		end
 
+	clear_cache
+			-- Clear the compilation cache
+		do
+			compiled_templates_cache.wipe_out
+		end
+
+	max_cache_size: INTEGER = 500
+			-- Maximum capacity of the compilation cache
+
 feature -- Expression Evaluation
 
 	evaluate_expression (expression: READABLE_STRING_GENERAL): BOOLEAN
@@ -241,7 +274,7 @@ feature -- Expression Evaluation
 		local
 			l_context: RENDER_CONTEXT
 		do
-			create l_context.make (variables, partials, recursion_depth, auto_escape, Current)
+			create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
 			Result := l_context.evaluate_expression (expression.to_string_32)
 		end
 
@@ -290,47 +323,12 @@ feature -- HTML Safety
 			if has_error then
 				create Result.make_empty
 			else
-				create l_context.make (variables, partials, recursion_depth, False, Current)
+				create l_context.make (variables, partials, recursion_depth, False, compiled_templates_cache, max_cache_size)
 				create l_buffer.make (template.count * 2)
 				across l_nodes as node loop
 					node.item.render (l_context, l_buffer)
 				end
 				Result := escape_html (l_buffer)
-			end
-		end
-
-feature {TEMPLATE_NODE} -- Parser and Recursive Helpers
-
-	render_partial (template_str: STRING_32; a_context: RENDER_CONTEXT; a_buffer: STRING_32)
-			-- Compile and render partial template directly into `a_buffer` using incremented depth context
-		local
-			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
-			l_sub_context: RENDER_CONTEXT
-		do
-			l_nodes := get_compiled_template (template_str)
-			if not has_error then
-				l_sub_context := a_context.incremented_depth_context
-				across l_nodes as node loop
-					node.item.render (l_sub_context, a_buffer)
-				end
-			end
-		end
-
-	render_recursive (template_str: STRING_32; a_context: RENDER_CONTEXT): STRING_32
-			-- Parse and recursively render `template_str` under an incremented depth context
-		local
-			l_nodes: ARRAYED_LIST [TEMPLATE_NODE]
-			l_sub_context: RENDER_CONTEXT
-		do
-			l_nodes := get_compiled_template (template_str)
-			if has_error then
-				create Result.make_empty
-			else
-				l_sub_context := a_context.incremented_depth_context
-				create Result.make (template_str.count)
-				across l_nodes as node loop
-					node.item.render (l_sub_context, Result)
-				end
 			end
 		end
 
@@ -364,19 +362,33 @@ feature {NONE} -- Implementation
 
 	get_compiled_template (a_template: READABLE_STRING_GENERAL): ARRAYED_LIST [TEMPLATE_NODE]
 			-- Compile template string, returning cached AST if already compiled
+		do
+			Result := get_compiled_template_with_name (a_template, Void)
+		end
+
+	get_compiled_template_with_name (a_template: READABLE_STRING_GENERAL; a_name: detachable READABLE_STRING_GENERAL): ARRAYED_LIST [TEMPLATE_NODE]
+			-- Compile template string, returning cached AST if already compiled, optionally using named cache key
 		local
 			l_key: STRING_32
 			l_parser: TEMPLATE_PARSER
 		do
-			create l_key.make_from_string (a_template.to_string_32)
+			if attached a_name as n then
+				create l_key.make_from_string (n.to_string_32)
+			else
+				create l_key.make_from_string ("#hash_" + a_template.hash_code.out)
+			end
+			
 			if compiled_templates_cache.has (l_key) and then attached compiled_templates_cache.item (l_key) as l_cached then
 				Result := l_cached
 			else
 				create l_parser.make
-				Result := l_parser.parse (l_key)
+				Result := l_parser.parse (a_template.to_string_32)
 				if l_parser.has_error then
 					last_error := l_parser.last_error
 				else
+					if compiled_templates_cache.count >= max_cache_size then
+						compiled_templates_cache.wipe_out
+					end
 					compiled_templates_cache.force (Result, l_key)
 				end
 			end

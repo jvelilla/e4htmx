@@ -89,40 +89,34 @@ feature -- Parsing
 							i := n + 1 -- Abort
 						end
 					else
-						-- Single brace "{". Check if it's an escaped brace "{{"
-						if i + 1 <= n and then template.item (i + 1) = '{' then
-							-- Handled as text
-							i := i + 2
+						-- Regular variable placeholder start. Collect preceding static text.
+						if i > l_text_start then
+							create l_text_node.make (template.substring (l_text_start, i - 1))
+							active_list.extend (l_text_node)
+						end
+						
+						l_val_end := template.index_of ('}', i)
+						if l_val_end = 0 then
+							-- Unclosed brace. Glimmer treats unclosed brace as static text
+							l_text_start := i
+							i := i + 1
 						else
-							-- Regular variable placeholder start. Collect preceding static text.
-							if i > l_text_start then
-								create l_text_node.make (template.substring (l_text_start, i - 1))
-								active_list.extend (l_text_node)
-							end
+							l_var_name := template.substring (i + 1, l_val_end - 1)
+							l_var_name.left_adjust
+							l_var_name.right_adjust
 							
-							l_val_end := template.index_of ('}', i)
-							if l_val_end = 0 then
-								-- Unclosed brace. Glimmer treats unclosed brace as static text
-								l_text_start := i
-								i := i + 1
-							else
-								l_var_name := template.substring (i + 1, l_val_end - 1)
+							l_raw := l_var_name.starts_with ("raw:")
+							if l_raw then
+								l_var_name := l_var_name.substring (5, l_var_name.count)
 								l_var_name.left_adjust
 								l_var_name.right_adjust
-								
-								l_raw := l_var_name.starts_with ("raw:")
-								if l_raw then
-									l_var_name := l_var_name.substring (5, l_var_name.count)
-									l_var_name.left_adjust
-									l_var_name.right_adjust
-								end
-								
-								create l_var_node.make (l_var_name, l_raw)
-								active_list.extend (l_var_node)
-								
-								l_text_start := l_val_end + 1
-								i := l_val_end + 1
 							end
+							
+							create l_var_node.make (l_var_name, l_raw)
+							active_list.extend (l_var_node)
+							
+							l_text_start := l_val_end + 1
+							i := l_val_end + 1
 						end
 					end
 				else
