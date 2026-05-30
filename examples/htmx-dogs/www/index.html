@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium Dogs Registry</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+</head>
+<body hx-headers='{"Accept": "text/html"}'>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Dogs Registry</h1>
+      <p class="subtitle">Manage and catalog premium canine breeds</p>
+    </header>
+
+    <main class="main-content">
+      <section class="form-section card">
+        <div class="card-header">
+          <h2>Dog Profile</h2>
+        </div>
+        <div
+          id="dog-form-container"
+          hx-trigger="revealed, selection-change from:body"
+          hx-get="/form"
+        >
+          <!-- Form skeleton loader -->
+          <div class="skeleton-loader"></div>
+        </div>
+      </section>
+
+      <section class="table-section card">
+        <div class="card-header">
+          <h2>Registered Dogs</h2>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Breed</th>
+                <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
+              </tr>
+            </thead>
+            <tbody hx-get="/table-rows" hx-trigger="revealed">
+              <!-- Loader line -->
+              <tr>
+                <td colspan="3" style="text-align: center; color: var(--text-muted);">Loading registered dogs...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
