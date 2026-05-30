@@ -68,7 +68,7 @@ feature -- Configuration
 
 feature -- Constants
 
-	One_second_ns: INTEGER_64 = 1_000_000_000
+	One_second_ns: INTEGER_64 = 3_000_000_000
 			-- One second in nanoseconds.
 
 feature -- Events

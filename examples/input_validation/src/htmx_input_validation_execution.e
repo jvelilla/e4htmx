@@ -11,6 +11,7 @@ inherit
     WSF_FILTERED_ROUTED_EXECUTION
     WSF_ROUTED_URI_HELPER
     SHARED_EXECUTION_ENVIRONMENT
+    EWF_GLIMMER_INTEGRATION
 
 create
     make
@@ -50,7 +51,6 @@ feature -- Router
             www.set_directory_index (<<"index.html">>)
             www.set_not_found_handler (agent execute_not_found)
             router.handle ("", www, router.methods_GET)
-            router.handle ("/", www, router.methods_GET)
         end
 
 feature -- Configuration
@@ -65,47 +65,37 @@ feature -- Events
 
     handle_version (req: WSF_REQUEST; res: WSF_RESPONSE)
         local
-            l_result: STRING_8
+            c: EWF_GLIMMER_CONTEXT
         do
-            l_result := "Eiffel Web Framework: 24.11"
-            new_response_get (req, res, l_result)
-        end
-
-    new_response_get (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
-        local
-            h: HTTP_HEADER
-        do
-            create h.make
-            h.put_content_type_text_html
-            h.put_content_length (output.count)
-            h.put_current_date
-            res.set_status_code ({HTTP_STATUS_CODE}.ok)
-            res.put_header_text (h.string)
-            res.put_string (output)
+            create c.make (req, res)
+            c.text ("Eiffel Web Framework: 24.11")
         end
 
     execute_not_found (uri: READABLE_STRING_8; req: WSF_REQUEST; res: WSF_RESPONSE)
             -- `uri' is not found, redirect to default page
+        local
+            c: EWF_GLIMMER_CONTEXT
         do
-            res.redirect_now_with_content (req.script_url ("/"), uri + ": not found.%NRedirection to " + req.script_url ("/"), "text/html")
+            create c.make (req, res)
+            c.redirect (req.script_url ("/"))
         end
 
     handle_email_validation (req: WSF_REQUEST; res: WSF_RESPONSE)
             -- Handle email validation request
         local
+            c: EWF_GLIMMER_CONTEXT
             l_email: STRING
-            l_valid: BOOLEAN
         do
-            if attached {WSF_STRING}req.query_parameter ("email") as email then
-                l_email := email.value.to_string_8
-                l_valid := is_valid_email (l_email)
-                if l_valid then
-                    new_response_get (req, res, "")
+            create c.make (req, res)
+            if attached c.query ("email") as email then
+                l_email := email.to_string_8
+                if is_valid_email (l_email) then
+                    c.empty
                 else
-                    new_response_get (req, res, "email in use")
+                    c.html ("email in use")
                 end
             else
-                new_response_get (req, res, "email parameter required")
+                c.html ("email parameter required")
             end
         end
 
@@ -136,86 +126,103 @@ feature -- Events
     handle_password_validation (req: WSF_REQUEST; res: WSF_RESPONSE)
             -- Handle password validation request
         local
+            c: EWF_GLIMMER_CONTEXT
             l_password: STRING
         do
-            if attached {WSF_STRING}req.query_parameter ("password") as password then
-                l_password := password.value.to_string_8
+            create c.make (req, res)
+            if attached c.query ("password") as password then
+                l_password := password.to_string_8
                 if is_valid_password (l_password) then
-                    new_response_get (req, res, "")
+                    c.empty
                 else
-                    new_response_get (req, res, "invalid password")
+                    c.html ("invalid password")
                 end
             else
-                new_response_get (req, res, "")  -- Empty password is considered valid
+                c.empty  -- Empty password is considered valid
             end
         end
 
     handle_form (req: WSF_REQUEST; res: WSF_RESPONSE)
             -- Handle form request
         local
+            c: EWF_GLIMMER_CONTEXT
             l_template: GLM_HTML_TEMPLATE
-            l_result: STRING
         do
+            create c.make (req, res)
             create l_template.make
 
             	-- Set up the form template with HTMX attributes
-            l_result := l_template.render (
+            c.render (l_template,
                 "[
-                    <form hx-post="/account" hx-target="#result" hx-on:htmx:after-request: "if (event.detail.pathInfo.requestPath === '/account' && event.detail.successful) this.reset()">
-                        <div>
-                            <label for="email">Email</label>
-                            <input
-                                id="email"
-                                hx-get="/email-validate"
-                                hx-sync="closest form:abort"
-                                hx-target="#email-error"
-                                hx-trigger="keyup changed delay:200ms"
-                                name="email"
-                                placeholder="email"
-                                required
-                                size="30"
-                                type="email"
-                            />
-                            <span class="error" id="email-error"></span>
+                    <form hx-post="/account" hx-target="#result" hx-on:htmx:after-request="if (event.detail.pathInfo.requestPath === '/account' && event.detail.successful) this.reset()" class="auth-form">
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <div class="input-wrapper">
+                                <input
+                                    id="email"
+                                    hx-get="/email-validate"
+                                    hx-sync="closest form:abort"
+                                    hx-target="#email-error"
+                                    hx-trigger="keyup changed delay:200ms"
+                                    name="email"
+                                    placeholder="you@example.com"
+                                    required
+                                    type="email"
+                                />
+                                <span class="error-message" id="email-error"></span>
+                            </div>
                         </div>
-                        <div>
+                        <div class="form-group">
                             <label for="password">Password</label>
-                            <input
-                                id="password"
-                                hx-get="/password-validate"
-                                hx-target="#password-error"
-                                hx-trigger="blur"
-                                minlength="8"
-                                name="password"
-                                placeholder="password"
-                                required
-                                size="20"
-                                type="password"
-                            />
-                            <span class="error" id="password-error"></span>
+                            <div class="input-wrapper">
+                                <div style="position: relative; width: 100%;">
+                                    <input
+                                        id="password"
+                                        hx-get="/password-validate"
+                                        hx-target="#password-error"
+                                        hx-trigger="blur"
+                                        minlength="8"
+                                        name="password"
+                                        placeholder="At least 8 characters"
+                                        required
+                                        type="password"
+                                        style="padding-right: 2.75rem;"
+                                    />
+                                    <button type="button" class="toggle-password" onclick="const p = document.getElementById('password'); p.type = p.type === 'password' ? 'text' : 'password'; this.querySelector('svg').style.opacity = p.type === 'password' ? '0.5' : '1';">
+                                        <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.5; transition: opacity 0.2s ease;">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span class="error-message" id="password-error"></span>
+                            </div>
                         </div>
-                        <button>Submit</button>
+                        <button type="submit" class="submit-btn">
+                            <span>Create Account</span>
+                            <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </button>
                     </form>
                 ]"
             )
-
-            new_response_get (req, res, l_result)
         end
 
     handle_account_creation (req: WSF_REQUEST; res: WSF_RESPONSE)
             -- Handle account creation POST request
         local
+            c: EWF_GLIMMER_CONTEXT
             l_email, l_password, l_response: STRING
             l_valid_email, l_valid_password: BOOLEAN
         do
-            if attached {WSF_STRING} req.form_parameter ("email") as email then
-                l_email := email.value.to_string_8
+            create c.make (req, res)
+            if attached c.form_value ("email") as email then
+                l_email := email.to_string_8
             else
                 create l_email.make_empty
             end
 
-            if attached {WSF_STRING} req.form_parameter ("password") as password then
-                l_password := password.value.to_string_8
+            if attached c.form_value ("password") as password then
+                l_password := password.to_string_8
             else
                 create l_password.make_empty
             end
@@ -226,21 +233,21 @@ feature -- Events
             create l_response.make_empty
 
             if not l_valid_email then
-                l_response.append ("<span class=%"error%" hx-swap-oob=%"true%" id=%"email-error%">email in use</span>")
+                l_response.append ("<span class=%"error-message%" hx-swap-oob=%"true%" id=%"email-error%">email in use</span>")
             end
 
             if not l_valid_password then
-                l_response.append ("<span class=%"error%" hx-swap-oob=%"true%" id=%"password-error%">invalid password</span>")
+                l_response.append ("<span class=%"error-message%" hx-swap-oob=%"true%" id=%"password-error%">invalid password</span>")
             end
 
             if l_valid_email and l_valid_password then
-                res.set_status_code ({HTTP_STATUS_CODE}.ok)
+                c.set_status ({HTTP_STATUS_CODE}.ok)
                 l_response.append ("<span>A new account was created.</span>")
             else
-                res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
+                c.set_status ({HTTP_STATUS_CODE}.bad_request)
             end
 
-            new_response_get (req, res, l_response)
+            c.html (l_response)
         end
 
 end
