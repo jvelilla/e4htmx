@@ -1,39 +1,54 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <title>htmx Lazy Loading</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EWF & HTMX Lazy Loading</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    
     <link rel="stylesheet" href="styles.css" />
     <script src="https://unpkg.com/htmx.org@2.0.0"></script>
   </head>
   <body>
-    <div style="height: 100vh">
-      <h1>Lorem Ipsum</h1>
-      <p>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
-        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-      </p>
-      <p>
-        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, 
-        eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-      </p>
-      <p>
-        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores 
-        eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, 
-        consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
-      </p>
+    <!-- Background blurred gradient orbs for glassmorphism layout -->
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+
+    <div class="dashboard-wrapper">
+      <!-- Main Header Panel -->
+      <header class="glass-card header-card">
+        <h1>Eiffel Web Framework & HTMX</h1>
+        <p class="intro-text">
+          A high-performance demonstration of lazy loading integration using EWF, HTMX, and the EWF_GLIMMER context library.
+        </p>
+      </header>
+
+      <!-- Scroll Spacer Card to show lazy loading scroll trigger -->
+      <section class="glass-card spacer-card" style="height: 60vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <h3 class="spacer-title">Lazy Loading Demo Area</h3>
+        <p class="spacer-desc">Scroll down to reveal the user directory container and trigger the HTMX request.</p>
+        <div style="margin-top: 1.5rem; animation: bounce 2s infinite; color: var(--accent-primary); font-size: 1.5rem;">↓</div>
+      </section>
+
+      <!-- Users Table Card -->
+      <main class="glass-card table-card">
+        <h2>Active User Directory</h2>
+        
+        <div
+          hx-get="/users"
+          hx-indicator="#lazy-indicator"
+          hx-trigger="revealed"
+        ></div>
+
+        <!-- CSS Loader Indicator -->
+        <div id="lazy-indicator" class="htmx-indicator loader-container">
+          <div class="shimmer-spinner"></div>
+          <span class="loader-text">Loading directory records...</span>
+        </div>
+      </main>
     </div>
-
-
-
-
-    
-    <h2>Users</h2>
-    <div
-      hx-get="/users"
-      hx-indicator=".htmx-indicator"
-      hx-trigger="revealed"
-    />
-    <img alt="loading" class="htmx-indicator" src="/spinner.gif" />
   </body>
 </html>

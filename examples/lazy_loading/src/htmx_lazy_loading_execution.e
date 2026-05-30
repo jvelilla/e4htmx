@@ -6,7 +6,7 @@ note
 	revision: "$Revision$"
 
 class
-	htmx_lazy_loading_EXECUTION
+	HTMX_LAZY_LOADING_EXECUTION
 
 inherit
 
@@ -17,6 +17,8 @@ inherit
 	WSF_ROUTED_URI_HELPER
 
 	SHARED_EXECUTION_ENVIRONMENT
+
+	EWF_GLIMMER_INTEGRATION
 
 create
 	make
@@ -62,49 +64,46 @@ feature -- Configuration
 			-- Document root to look for files or directories
 		once
 			Result := execution_environment.current_working_path.extended ("www")
-
 		end
+
+feature -- Constants
+
+	One_second_ns: INTEGER_64 = 1_000_000_000
+			-- One second in nanoseconds.
+
 feature -- Events
 
 	handle_version (req: WSF_REQUEST; res: WSF_RESPONSE)
 		local
-			l_result: STRING_8
+			c: EWF_GLIMMER_CONTEXT
 		do
-			l_result := "Eiffel Web Framework: 24.11"
-			new_response_get (req, res, l_result)
-		end
-
-	new_response_get (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
-		local
-			h: HTTP_HEADER
-		do
-			create h.make
-			h.put_content_type_text_html
-			h.put_content_length (output.count)
-			h.put_current_date
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (output)
+			create c.make (req, res)
+			c.text ("Eiffel Web Framework: 24.11")
 		end
 
 	execute_not_found (uri: READABLE_STRING_8; req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- `uri' is not found, redirect to default page
+		local
+			c: EWF_GLIMMER_CONTEXT
 		do
-			res.redirect_now_with_content (req.script_url ("/"), uri + ": not found.%NRedirection to " + req.script_url ("/"), "text/html")
+			create c.make (req, res)
+			c.redirect (req.script_url ("/"))
 		end
 
 	handle_users (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle GET request for /users
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_parser: JSON_PARSER
 			l_converter: JSON_USER_CONVERTER
 			l_users: ARRAYED_LIST [USER]
 			l_file: PLAIN_TEXT_FILE
 			l_template: GLM_HTML_TEMPLATE
-			l_result: STRING_32
 		do
+			create c.make (req, res)
+
 				-- Simulate delay (1 second)
-			{EXECUTION_ENVIRONMENT}.sleep (1_000_000_000)
+			{EXECUTION_ENVIRONMENT}.sleep (One_second_ns)
 
 				-- Create file handle
 			create l_file.make_with_path (document_root.appended ("\users.json"))
@@ -124,16 +123,13 @@ feature -- Events
 
 					create l_template.make
 					l_template.set_variable ("users", l_users)
-					l_result := l_template.render_file (document_root.appended ("\users_table.html").name)
-
-					if l_template.has_error and then attached l_template.last_error as err then
-						new_response_get (req, res, "<div class=%"error%">" + err.to_string_8 + "</div>")
-					else
-						new_response_get (req, res, l_result.to_string_8)
-					end
+					c.render_file (l_template, document_root.appended ("\users_table.html").name)
 				else
-					new_response_get (req, res, "<div class=%"error%">Invalid users data</div>")
+					c.set_status ({HTTP_STATUS_CODE}.bad_request)
+					c.html ("<div class=%"error%">Invalid users data</div>")
 				end
+			else
+				c.not_found
 			end
 		end
 

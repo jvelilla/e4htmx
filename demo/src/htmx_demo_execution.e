@@ -101,17 +101,26 @@ feature -- Events
 
 	handle_version (req: WSF_REQUEST; res: WSF_RESPONSE)
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_result: STRING_8
-			l_htmx_req: GLM_HTMX_REQUEST
+			-- l_htmx_req: GLM_HTMX_REQUEST
 		do
-			l_htmx_req := GLM_HTMX_REQUEST (req)
-			if l_htmx_req.is_htmx_request then
+			-- l_htmx_req := GLM_HTMX_REQUEST (req)
+			-- if l_htmx_req.is_htmx_request then
+			-- 	l_result := "Eiffel Web Framework: 24.11 (via HTMX)"
+			-- else
+			-- 	l_result := "Eiffel Web Framework: 24.11"
+			-- end
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- new_response (req, res, l_result)
+
+			create c.make (req, res)
+			if c.htmx.is_htmx_request then
 				l_result := "Eiffel Web Framework: 24.11 (via HTMX)"
 			else
 				l_result := "Eiffel Web Framework: 24.11"
 			end
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			new_response (req, res, l_result)
+			c.html (l_result)
 		end
 
 	new_response (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
@@ -135,9 +144,10 @@ feature -- Events
 	handle_table_rows (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle request for table rows of dogs, sorted by name
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_dogs: ARRAYED_LIST [DOG]
 			l_template: GLM_HTML_TEMPLATE
-			l_html: STRING
+			-- l_html: STRING
 			l_sorter: SORTER [DOG]
 		do
 				-- Convert hash table to sorted array
@@ -152,9 +162,32 @@ feature -- Events
 						end))
 			l_sorter.sort (l_dogs)
 
+			-- create l_template.make
+			-- l_template.set_variable ("dogs", l_dogs)
+			-- l_html := l_template.render ("[
+			-- 	{{each dog in dogs}}
+			-- 	<tr class="on-hover">
+			-- 		<td>{dog.name}</td>
+			-- 		<td>{dog.breed}</td>
+			-- 		<td class="buttons">
+			-- 			<button
+			-- 				class="show-on-hover"
+			-- 				hx-delete="/dog/{dog.id}"
+			-- 				hx-confirm="Are you sure?"
+			-- 				hx-target="closest tr"
+			-- 				hx-swap="delete"
+			-- 			>X</button>
+			-- 		</td>
+			-- 	</tr>
+			-- 	{{end}}
+			-- ]").to_string_8
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- new_response (req, res, l_html)
+
+			create c.make (req, res)
 			create l_template.make
 			l_template.set_variable ("dogs", l_dogs)
-			l_html := l_template.render ("[
+			c.render (l_template, "[
 				{{each dog in dogs}}
 				<tr class="on-hover">
 					<td>{dog.name}</td>
@@ -170,84 +203,124 @@ feature -- Events
 					</td>
 				</tr>
 				{{end}}
-			]").to_string_8
-
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			new_response (req, res, l_html)
+			]")
 		end
 
 	handle_add_dog_post (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle POST request to add a new dog and return its row HTML
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_dog: DOG
-			l_html: STRING
+			-- l_html: STRING
 		do
+			-- if
+			-- 	attached {WSF_STRING} req.form_parameter ("name") as l_name and then
+			-- 	attached {WSF_STRING} req.form_parameter ("breed") as l_breed
+			-- then
+			-- 	-- Add dog to database
+			-- 	l_dog := add_dog (l_name.value, l_breed.value)
+			-- 	-- Generate HTML row for the new dog
+			-- 	l_html := dog_row (l_dog)
+			-- 	-- Send response with 201 Created status
+			-- 	res.set_status_code ({HTTP_STATUS_CODE}.created)
+			-- 	new_response (req, res, l_html)
+			-- else
+			-- 	-- Updated error handling
+			-- 	res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
+			-- 	res.put_string ("Missing required parameters")
+			-- end
+
+			create c.make (req, res)
 			if
-				attached {WSF_STRING} req.form_parameter ("name") as l_name and then
-				attached {WSF_STRING} req.form_parameter ("breed") as l_breed
+				attached c.form_value ("name") as l_name and then
+				attached c.form_value ("breed") as l_breed
 			then
-				-- Add dog to database
-				l_dog := add_dog (l_name.value, l_breed.value)
-
-				-- Generate HTML row for the new dog
-				l_html := dog_row (l_dog)
-
-				-- Send response with 201 Created status
-				res.set_status_code ({HTTP_STATUS_CODE}.created)
-				new_response (req, res, l_html)
+				l_dog := add_dog (l_name, l_breed)
+				c.set_status ({HTTP_STATUS_CODE}.created)
+				c.html (dog_row (l_dog))
 			else
-				-- Updated error handling
-				res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-				res.put_string ("Missing required parameters")
+				c.set_status ({HTTP_STATUS_CODE}.bad_request)
+				c.text ("Missing required parameters")
 			end
 		end
 
 	handle_delete_dog (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle DELETE request to remove a dog
 		local
-			l_id: STRING
+			c: EWF_GLIMMER_CONTEXT
+			-- l_id: STRING
 		do
-			if attached {WSF_STRING} req.path_parameter ("id") as p_id then
-				l_id := p_id.value
+			-- if attached {WSF_STRING} req.path_parameter ("id") as p_id then
+			-- 	l_id := p_id.value
+			-- 	if shared_dogs.has (l_id) then
+			-- 		-- Remove dog from database
+			-- 		shared_dogs.remove (l_id)
+			-- 		-- Send empty response with 204 No Content status
+			-- 		res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- 		new_response (req, res, "")
+			-- 	else
+			-- 		-- Updated error handling
+			-- 		res.set_status_code ({HTTP_STATUS_CODE}.not_found)
+			-- 		res.put_string ("Dog not found")
+			-- 	end
+			-- else
+			-- 	-- Updated error handling
+			-- 	res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
+			-- 	res.put_string ("Missing dog ID")
+			-- end
 
+			create c.make (req, res)
+			if attached c.param ("id") as l_id then
 				if shared_dogs.has (l_id) then
-					-- Remove dog from database
 					shared_dogs.remove (l_id)
-
-					-- Send empty response with 204 No Content status
-					res.set_status_code ({HTTP_STATUS_CODE}.ok)
-					new_response (req, res, "")
+					c.empty
 				else
-					-- Updated error handling
-					res.set_status_code ({HTTP_STATUS_CODE}.not_found)
-					res.put_string ("Dog not found")
+					c.not_found
 				end
 			else
-				-- Updated error handling
-				res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-				res.put_string ("Missing dog ID")
+				c.set_status ({HTTP_STATUS_CODE}.bad_request)
+				c.text ("Missing dog ID")
 			end
 		end
 
 	handle_oob (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle request for the out-of-band demo page
 		local
-			l_html: STRING
+			c: EWF_GLIMMER_CONTEXT
+			-- l_html: STRING
 		do
-			l_html := oob_page
+			-- l_html := oob_page
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- new_response (req, res, l_html)
 
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			new_response (req, res, l_html)
+			create c.make (req, res)
+			c.html (oob_page)
 		end
 
 	handle_oob_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle request for the out-of-band demo response
 		local
-			l_html: STRING
+			c: EWF_GLIMMER_CONTEXT
 			l_template: GLM_HTML_TEMPLATE
+			-- l_html: STRING
 		do
+			-- create l_template.make
+			-- l_html := l_template.render ("[
+			-- 	<div>new 1</div>
+			-- 	<div id="target2" hx-swap-oob="true">
+			-- 		new 2
+			-- 	</div>
+			-- 	<div id="target2" hx-swap-oob="afterend">
+			-- 		<div>after 2</div>
+			-- 	</div>
+			-- 	<div hx-swap-oob="innerHTML:#target3">new 3</div>
+			-- ]").to_string_8
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- new_response (req, res, l_html)
+
+			create c.make (req, res)
 			create l_template.make
-			l_html := l_template.render ("[
+			c.render (l_template, "[
 				<div>new 1</div>
 				<div id="target2" hx-swap-oob="true">
 					new 2
@@ -256,86 +329,138 @@ feature -- Events
 					<div>after 2</div>
 				</div>
 				<div hx-swap-oob="innerHTML:#target3">new 3</div>
-			]").to_string_8
-
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			new_response (req, res, l_html)
+			]")
 		end
 
 	handle_event_with_no_data (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle request that triggers event1 with no data
 		local
-			h: HTTP_HEADER
-			l_template: GLM_HTML_TEMPLATE
-			l_output: STRING
+			c: EWF_GLIMMER_CONTEXT
+			-- h: HTTP_HEADER
+			-- l_template: GLM_HTML_TEMPLATE
+			-- l_output: STRING
 		do
-			create l_template.make
-			l_template.add_trigger ("event1")
-			l_output := "dispatched event1"
+			-- create l_template.make
+			-- l_template.add_trigger ("event1")
+			-- l_output := "dispatched event1"
+			-- create h.make
+			-- h.put_content_type_text_plain
+			-- h.put_content_length (l_output.count)
+			-- h.put_current_date
+			-- apply_htmx_headers (l_template, h)
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- res.put_header_text (h.string)
+			-- res.put_string (l_output)
 
-			create h.make
-			h.put_content_type_text_plain
-			h.put_content_length (l_output.count)
-			h.put_current_date
-			apply_htmx_headers (l_template, h)
-
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (l_output)
+			create c.make (req, res)
+			c.set_trigger ("event1")
+			c.text ("dispatched event1")
 		end
 
 	handle_event_with_string (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle request that triggers event2 with string data
 		local
-			h: HTTP_HEADER
-			l_trigger: STRING
-			l_output: STRING
+			c: EWF_GLIMMER_CONTEXT
+			-- h: HTTP_HEADER
+			-- l_trigger: STRING
+			-- l_output: STRING
 		do
-				-- Create JSON string for the trigger
-			l_trigger := "{%"event2%":%"some string%"}"
-			l_output := "dispatched event2"
+			-- l_trigger := "{%"event2%":%"some string%"}"
+			-- l_output := "dispatched event2"
+			-- create h.make
+			-- h.put_content_type_text_plain
+			-- h.put_header_key_value ("HX-Trigger", l_trigger)
+			-- h.put_content_length (l_output.count)
+			-- h.put_current_date
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- res.put_header_text (h.string)
+			-- res.put_string (l_output)
 
-			create h.make
-			h.put_content_type_text_plain
-			h.put_header_key_value ("HX-Trigger", l_trigger)
-			h.put_content_length (l_output.count)
-			h.put_current_date
-
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (l_output)
+			create c.make (req, res)
+			c.set_trigger ("{%"event2%":%"some string%"}")
+			c.text ("dispatched event2")
 		end
 
 	handle_event_with_object (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle request that triggers event3 with object data
 		local
-			h: HTTP_HEADER
-			l_trigger: STRING
-			l_output: STRING
+			c: EWF_GLIMMER_CONTEXT
+			-- h: HTTP_HEADER
+			-- l_trigger: STRING
+			-- l_output: STRING
 		do
-				-- Create JSON string for the trigger with nested object
-			l_trigger := "{%"event3%":{%"foo%":1,%"bar%":2}}"
-			l_output := "dispatched event3"
+			-- l_trigger := "{%"event3%":{%"foo%":1,%"bar%":2}}"
+			-- l_output := "dispatched event3"
+			-- create h.make
+			-- h.put_content_type_text_plain
+			-- h.put_header_key_value ("HX-Trigger", l_trigger)
+			-- h.put_content_length (l_output.count)
+			-- h.put_current_date
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- res.put_header_text (h.string)
+			-- res.put_string (l_output)
 
-			create h.make
-			h.put_content_type_text_plain
-			h.put_header_key_value ("HX-Trigger", l_trigger)
-			h.put_content_length (l_output.count)
-			h.put_current_date
-
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (l_output)
+			create c.make (req, res)
+			c.set_trigger ("{%"event3%":{%"foo%":1,%"bar%":2}}")
+			c.text ("dispatched event3")
 		end
 
 	handle_trigger (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle request for the event triggering demo page
 		local
-			l_html: STRING
+			c: EWF_GLIMMER_CONTEXT
 			l_template: GLM_HTML_TEMPLATE
+			-- l_html: STRING
 		do
+			-- create l_template.make
+			-- l_html := l_template.render ("[
+			-- 	<html>
+			-- 	  <head>
+			-- 	    <title>htmx Event Triggering</title>
+			-- 	    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+			-- 	    <script>
+			-- 	      function handleEvent1(event) {
+			-- 	        const {value} = event.detail;
+			-- 	        alert('got event1 with ' + value);
+			-- 	      }
+			-- 	      function handleEvent2(event) {
+			-- 	        const {value} = event.detail;
+			-- 	        alert('got event2 with ' + JSON.stringify(value));
+			-- 	      }
+			-- 	      function handleEvent3(event) {
+			-- 	        const {detail} = event;
+			-- 	        // detail.elt holds a reference to the element that
+			-- 	        // triggered the request.  JSON.stringify encounters a
+			-- 	        // circular reference if that is included, so we remove it.
+			-- 	        delete detail.elt;
+			-- 	        alert('got event3 with ' + JSON.stringify(detail));
+			-- 	      }
+			-- 	    </script>
+			-- 	  </head>
+			-- 	  <body
+			-- 	    hx-on:event1="handleEvent1(event)"
+			-- 	    hx-on:event2="handleEvent2(event)"
+			-- 	    hx-on:event3="handleEvent3(event)"
+			-- 	  >
+			-- 	    <button hx-get="/event-with-no-data" hx-target="#content">
+			-- 	      Event w/ no data
+			-- 	    </button>
+			-- 	    <button hx-get="/event-with-string" hx-target="#content">
+			-- 	      Event w/ string
+			-- 	    </button>
+			-- 	    <button hx-get="/event-with-object" hx-target="#content">
+			-- 	      Event w/ object
+			-- 	    </button>
+			-- 	    <div id="content"></div>
+			-- 	  </body>
+			-- 	</html>
+			-- ]").to_string_8
+			-- res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			-- new_response (req, res, l_html)
+
+			create c.make (req, res)
 			create l_template.make
-			l_html := l_template.render ("[
+			c.render (l_template, "[
 				<html>
 				  <head>
 				    <title>htmx Event Triggering</title>
@@ -376,10 +501,7 @@ feature -- Events
 				    <div id="content"></div>
 				  </body>
 				</html>
-			]").to_string_8
-
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			new_response (req, res, l_html)
+			]")
 		end
 
 feature -- Database Operations

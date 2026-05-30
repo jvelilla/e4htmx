@@ -1,13 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <title>hx-boost Demo</title>
+  <meta charset="UTF-8">
+  <title>🚀 HTMX Boosting Explorer</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://unpkg.com/htmx.org@2.0.0"></script>
-  </head>
-  <body>
-  <a href="another.html">Without boost</a>
-  <a href="another.html" hx-boost="true">With boost</a>
-  </body>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>HTMX Boosting Explorer</h1>
+      <p>Seamless SPA navigation powered by Eiffel Web Framework & HTMX</p>
+    </header>
+
+    <main class="card">
+      <h2>Understanding Page Boosting</h2>
+      <p>
+        The <code>hx-boost</code> attribute intercepts standard anchor clicks and form submissions, converting them into AJAX requests. It then swaps the page body and merges head elements without a full page reload, resulting in smooth transitions.
+      </p>
+
+      <div class="nav-group">
+        <a href="another.html" class="btn-card">
+          <div>
+            <h3>Standard Navigation</h3>
+            <p>Causes a full browser refresh, clearing page state and flashing the browser window.</p>
+          </div>
+          <span class="badge">No Boost</span>
+        </a>
+
+        <a href="another.html" hx-boost="true" class="btn-card">
+          <div>
+            <h3>Boosted Navigation</h3>
+            <p>Performs an AJAX swap of the body, merging stylesheets and executing new scripts smoothly.</p>
+          </div>
+          <span class="badge">hx-boost="true"</span>
+        </a>
+      </div>
+    </main>
+
+    <section class="card">
+      <h2>EWF Server Context Check</h2>
+      <p>Query the backend server using an asynchronous HTMX call to retrieve the EWF system version dynamically.</p>
+      <div class="action-box">
+        <button hx-get="/version" hx-target="#version-val" hx-swap="innerHTML" class="btn-primary">
+          Check Server Version
+        </button>
+        <div class="status-text" id="version-val">Click to query server...</div>
+      </div>
+    </section>
+  </div>
+</body>
 </html>

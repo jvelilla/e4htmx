@@ -22,6 +22,7 @@
 		</library>
 		<library name="json" location="$ISE_LIBRARY\contrib\library\text\parser\json\library\json.ecf" readonly="false"/>
 		<library name="glimmer" location="..\..\glimmer\glimmer.ecf" readonly="true"/>
+		<library name="ewf_glimmer" location="..\..\ewf_glimmer\ewf_glimmer.ecf" readonly="false"/>
 	</target>
 
 	<target name="htmx_lazy_loading_any" extends="common">
