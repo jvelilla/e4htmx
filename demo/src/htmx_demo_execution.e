@@ -20,6 +20,8 @@ inherit
 
 	SHARED_SERVICES
 
+	EWF_GLIMMER_INTEGRATION
+
 create
 	make
 
@@ -100,8 +102,14 @@ feature -- Events
 	handle_version (req: WSF_REQUEST; res: WSF_RESPONSE)
 		local
 			l_result: STRING_8
+			l_htmx_req: GLM_HTMX_REQUEST
 		do
-			l_result := "Eiffel Web Framework: 24.11"
+			l_htmx_req := GLM_HTMX_REQUEST (req)
+			if l_htmx_req.is_htmx_request then
+				l_result := "Eiffel Web Framework: 24.11 (via HTMX)"
+			else
+				l_result := "Eiffel Web Framework: 24.11"
+			end
 			res.set_status_code ({HTTP_STATUS_CODE}.ok)
 			new_response (req, res, l_result)
 		end
@@ -128,6 +136,7 @@ feature -- Events
 			-- Handle request for table rows of dogs, sorted by name
 		local
 			l_dogs: ARRAYED_LIST [DOG]
+			l_template: GLM_HTML_TEMPLATE
 			l_html: STRING
 			l_sorter: SORTER [DOG]
 		do
@@ -143,11 +152,25 @@ feature -- Events
 						end))
 			l_sorter.sort (l_dogs)
 
-				-- Generate HTML for all dogs
-			create l_html.make_empty
-			across l_dogs as dog loop
-				l_html.append (dog_row (dog.item))
-			end
+			create l_template.make
+			l_template.set_variable ("dogs", l_dogs)
+			l_html := l_template.render ("[
+				{{each dog in dogs}}
+				<tr class="on-hover">
+					<td>{dog.name}</td>
+					<td>{dog.breed}</td>
+					<td class="buttons">
+						<button
+							class="show-on-hover"
+							hx-delete="/dog/{dog.id}"
+							hx-confirm="Are you sure?"
+							hx-target="closest tr"
+							hx-swap="delete"
+						>X</button>
+					</td>
+				</tr>
+				{{end}}
+			]").to_string_8
 
 			res.set_status_code ({HTTP_STATUS_CODE}.ok)
 			new_response (req, res, l_html)
@@ -221,12 +244,10 @@ feature -- Events
 			-- Handle request for the out-of-band demo response
 		local
 			l_html: STRING
-			l_esx: ESX
-			l_variables: STRING_TABLE [ANY]
+			l_template: GLM_HTML_TEMPLATE
 		do
-			create l_esx
-			create l_variables.make (0)
-			l_html := l_esx.esx ("[
+			create l_template.make
+			l_html := l_template.render ("[
 				<div>new 1</div>
 				<div id="target2" hx-swap-oob="true">
 					new 2
@@ -235,7 +256,7 @@ feature -- Events
 					<div>after 2</div>
 				</div>
 				<div hx-swap-oob="innerHTML:#target3">new 3</div>
-			]", l_variables)
+			]").to_string_8
 
 			res.set_status_code ({HTTP_STATUS_CODE}.ok)
 			new_response (req, res, l_html)
@@ -245,16 +266,22 @@ feature -- Events
 			-- Handle request that triggers event1 with no data
 		local
 			h: HTTP_HEADER
+			l_template: GLM_HTML_TEMPLATE
+			l_output: STRING
 		do
+			create l_template.make
+			l_template.add_trigger ("event1")
+			l_output := "dispatched event1"
+
 			create h.make
 			h.put_content_type_text_plain
-			h.put_header_key_value ("HX-Trigger", "event1")
-			h.put_content_length (17)
+			h.put_content_length (l_output.count)
 			h.put_current_date
+			apply_htmx_headers (l_template, h)
 
 			res.set_status_code ({HTTP_STATUS_CODE}.ok)
 			res.put_header_text (h.string)
-			res.put_string ("dispatched event1")
+			res.put_string (l_output)
 		end
 
 	handle_event_with_string (req: WSF_REQUEST; res: WSF_RESPONSE)
@@ -301,12 +328,10 @@ feature -- Events
 			-- Handle request for the event triggering demo page
 		local
 			l_html: STRING
-			l_esx: ESX
-			l_variables: STRING_TABLE [ANY]
+			l_template: GLM_HTML_TEMPLATE
 		do
-			create l_esx
-			create l_variables.make (0)
-			l_html := l_esx.esx ("[
+			create l_template.make
+			l_html := l_template.render ("[
 				<html>
 				  <head>
 				    <title>htmx Event Triggering</title>
@@ -347,7 +372,7 @@ feature -- Events
 				    <div id="content"></div>
 				  </body>
 				</html>
-			]", l_variables)
+			]").to_string_8
 
 			res.set_status_code ({HTTP_STATUS_CODE}.ok)
 			new_response (req, res, l_html)
@@ -379,43 +404,37 @@ feature -- HTML Generation
 	dog_row (a_dog: DOG): STRING
 			-- Generate HTML row for dog table
 		local
-			l_esx: ESX
-			l_variables: STRING_TABLE [ANY]
+			l_template: GLM_HTML_TEMPLATE
 		do
-			create l_esx
-			create l_variables.make (2)
-			l_variables.put (a_dog.name, "name")
-			l_variables.put (a_dog.breed, "breed")
-			l_variables.put (a_dog.id, "id")
+			create l_template.make
+			l_template.set_variable ("dog", a_dog)
 
-			Result := l_esx.esx ("[
+			Result := l_template.render ("[
 				<tr class="on-hover">
-					<td>{name}</td>
-					<td>{breed}</td>
+					<td>{dog.name}</td>
+					<td>{dog.breed}</td>
 					<td class="buttons">
 						<button
 							class="show-on-hover"
-							hx-delete="/dog/{id}"
+							hx-delete="/dog/{dog.id}"
 							hx-confirm="Are you sure?"
 							hx-target="closest tr"
 							hx-swap="delete"
 						>X</button>
 					</td>
 				</tr>
-			]", l_variables)
+			]").to_string_8
 		ensure
 			result_not_empty: not Result.is_empty
-			contains_dog_info: Result.has_substring (a_dog.name) and Result.has_substring (a_dog.breed)
+			contains_dog_info: Result.has_substring (a_dog.name.to_string_8) and Result.has_substring (a_dog.breed.to_string_8)
 		end
 
 	oob_page: STRING
 		local
-			l_esx: ESX
-			l_variables: STRING_TABLE [ANY]
+			l_template: GLM_HTML_TEMPLATE
 		do
-			create l_esx
-			create l_variables.make (0)
-			Result := l_esx.esx("[
+			create l_template.make
+			Result := l_template.render ("[
 				<html>
 				<head>
 				<title>Out-of-Band Demo</title>
@@ -428,7 +447,7 @@ feature -- HTML Generation
 				<div id="target3">original 3</div>
 				</body>
 				</html>
-			]", l_variables)
+			]").to_string_8
 		end
 
 end

@@ -26,7 +26,7 @@ feature {NONE} -- Initialization
 			-- Initialize current service.
 		do
 			Precursor
-			set_service_option ("port", 9090)
+			set_service_option ("port", 9999)
 			set_service_option ("verbose", "yes")
 		end
 
@@ -34,15 +34,15 @@ feature -- HTML Template Example
 
     show_template_example: STRING
         local
-            l_template: HTML_TEMPLATE
+            l_template: GLM_HTML_TEMPLATE
             l_html: STRING
         do
             create l_template.make
-            
+
             -- Set some variables
             l_template.set_variable ("title", "My Page")
             l_template.set_variable ("user_name", "John Doe")
-            
+
             -- Create a template string
             l_html := "[
                 <!DOCTYPE html>
@@ -56,8 +56,8 @@ feature -- HTML Template Example
                 </body>
                 </html>
             ]"
-            
-            Result := l_template.render (l_html)
+
+            Result := l_template.render (l_html).to_string_8
         end
 
 end
