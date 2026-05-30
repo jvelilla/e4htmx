@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Active Search - htmx & Glimmer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+</head>
+<body>
+    <div class="search-container">
+        <header>
+            <h1>User Directory</h1>
+            <p class="subtitle">Search members by name, email, role, or company</p>
+        </header>
+
+        <div class="search-bar-wrapper">
+            <input 
+                type="text" 
+                name="search" 
+                placeholder="Type to search..." 
+                hx-get="/search" 
+                hx-trigger="keyup changed delay:300ms, search" 
+                hx-target="#search-results" 
+                hx-indicator="#search-indicator"
+                class="search-input"
+                id="search-input"
+                autocomplete="off"
+            >
+            <div id="search-indicator" class="htmx-indicator">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Company</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="search-results" hx-get="/search" hx-trigger="load">
+                    <!-- Initial load by htmx -->
+                    <tr>
+                        <td colspan="6" class="loading-placeholder">Loading directory...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

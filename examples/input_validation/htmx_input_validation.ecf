@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="ISO-8859-1"?>
+<?xml version="1.0" encoding="ISO-8859-1"?>
 <system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd" name="htmx_input_validation" uuid="92D0B593-043A-47F9-AA46-73687A3FE7F1">
 	<target name="common" abstract="true">
 		<file_rule>
@@ -17,17 +17,13 @@
 		<library name="http" location="$ISE_LIBRARY\contrib\library\network\protocol\http\http.ecf">
 			<option warning="none"/>
 		</library>
-		<library name="smarty" location="$ISE_LIBRARY\contrib\library\text\template\smarty\smarty.ecf" readonly="false">
-			<option warning="none"/>
-		</library>
 		<library name="wsf" location="$ISE_LIBRARY\contrib\library\web\framework\ewf\wsf\wsf.ecf">
 			<option warning="none"/>
 		</library>
 		<library name="glimmer" location="..\..\glimmer\glimmer.ecf">
 			<option warning="none"/>
 		</library>
-
-
+		<library name="ewf_glimmer" location="..\..\ewf_glimmer\ewf_glimmer.ecf" readonly="false"/>
 	</target>
 	<target name="htmx_input_validation_any" extends="common">
 		<root class="htmx_input_validation" feature="make_and_launch"/>

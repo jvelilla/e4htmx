@@ -1,0 +1,22 @@
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Company</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{each user in users}}
+                <tr>
+                    <td><span class="user-id-badge">#{user.id}</span></td>
+                    <td><span class="user-name">{user.name}</span></td>
+                    <td><span class="user-email">{user.email}</span></td>
+                    <td><span class="user-company-badge">{user.company.name}</span></td>
+                </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>

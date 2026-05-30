@@ -81,7 +81,7 @@ feature -- Query
         do
         	last_counts := 0;
             create l_query.make (
-                "SELECT COUNT(*) FROM todos WHERE description = :DESC;",
+                "SELECT COUNT(*) FROM todos WHERE description = :DESC COLLATE NOCASE;",
                 db
             )
             check l_query_is_compiled: l_query.is_compiled end

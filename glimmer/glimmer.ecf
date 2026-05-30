@@ -17,6 +17,7 @@
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf">
 			<option warning="none"/>
 		</library>
+
 		<cluster name="glimmer" location=".\src" recursive="true">
 			<option warning="none" is_obsolete_iteration="true" manifest_array_type="mismatch_warning"/>
 			<class_option class="APPLICATION" warning="none" is_obsolete_iteration="true" manifest_array_type="mismatch_warning"/>

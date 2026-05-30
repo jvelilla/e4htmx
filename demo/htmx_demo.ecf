@@ -18,9 +18,8 @@
 		<library name="http" location="$ISE_LIBRARY\contrib\library\network\protocol\http\http.ecf">
 			<option warning="none"/>
 		</library>
-		<library name="smarty" location="$ISE_LIBRARY\contrib\library\text\template\smarty\smarty.ecf" readonly="false">
-			<option warning="none"/>
-		</library>
+		<library name="glimmer" location="..\glimmer\glimmer.ecf" readonly="false"/>
+		<library name="ewf_glimmer" location="..\ewf_glimmer\ewf_glimmer.ecf" readonly="false"/>
 		<library name="uuid" location="$ISE_LIBRARY\library\uuid\uuid.ecf"/>
 		<library name="wsf" location="$ISE_LIBRARY\contrib\library\web\framework\ewf\wsf\wsf.ecf">
 			<option warning="none"/>

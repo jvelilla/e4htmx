@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTMX Advanced: OOB Swaps & Client Events</title>
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- HTMX 2.x -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --container-bg: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --accent-gradient: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            --glow-color: rgba(59, 130, 246, 0.15);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-highlight: #60a5fa;
+            --swapped-color: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+        }
+
+        .wrapper {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            padding: 2.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--primary-gradient);
+            opacity: 0;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 20px 40px -15px var(--glow-color);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card.alt::before {
+            background: var(--accent-gradient);
+        }
+
+        .card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        .card.alt .icon {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+        }
+
+        p.demo-text {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed var(--border-color);
+            padding: 1.25rem;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1.25rem;
+            color: var(--text-primary);
+            position: relative;
+        }
+
+        p.demo-text::after {
+            content: 'ID: ' attr(id);
+            position: absolute;
+            top: -10px;
+            right: 15px;
+            background: #1e293b;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            font-family: monospace;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        p.swapped {
+            border-color: rgba(16, 185, 129, 0.3) !important;
+            background: rgba(16, 185, 129, 0.05) !important;
+            animation: pulse-border 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: rgba(16, 185, 129, 0.3); }
+            100% { border-color: rgba(16, 185, 129, 0.8); }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            background: var(--primary-gradient);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            text-decoration: none;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            filter: brightness(1.1);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+            transform: scale(1.02);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .card.alt .btn {
+            background: var(--accent-gradient);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .card.alt .btn:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Realtime log panel */
+        .console-panel {
+            background: rgba(5, 8, 16, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 1.5rem;
+            font-family: 'Courier New', Courier, monospace;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .console-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot.red { background-color: #ef4444; }
+        .dot.yellow { background-color: #f59e0b; }
+        .dot.green { background-color: #10b981; }
+
+        .console-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+        }
+
+        .console-content {
+            height: 120px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #34d399;
+        }
+
+        .console-line {
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .console-time {
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .console-info {
+            color: #60a5fa;
+        }
+
+        .console-warn {
+            color: #fbbf24;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wrapper">
+        <header>
+            <h1>HTMX Advanced Demonstration</h1>
+            <div class="subtitle">Exploring Out-of-Band (OOB) Swaps & Client-Side Event Triggering</div>
+        </header>
+
+        <div class="grid">
+            <!-- Out-of-Band Swaps Section -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">⇄</span>
+                    Out-of-Band Swaps
+                </div>
+                
+                <p id="para-1" class="demo-text">
+                    This is <strong>Paragraph 1</strong>. When the button below is clicked, this paragraph will be updated out-of-band because the response contains a matching ID element with the hx-swap-oob attribute.
+                </p>
+                
+                <p id="para-2" class="demo-text">
+                    This is <strong>Paragraph 2</strong>. It will also be replaced simultaneously by the same response, demonstrating how a single button click can target and swap multiple distinct locations on the page.
+                </p>
+
+                <button 
+                    class="btn" 
+                    hx-get="/oob-swap" 
+                    hx-swap="none"
+                >
+                    Trigger Out-of-Band Swap
+                </button>
+            </div>
+
+            <!-- Client Event Triggering Section -->
+            <div class="card alt">
+                <div class="card-title">
+                    <span class="icon">⚡</span>
+                    Triggering Client Events
+                </div>
+                
+                <p class="demo-text" style="border-style: solid; text-align: center; font-style: italic; padding: 2rem 1.25rem;">
+                    Clicking the button will trigger an event from the server. The button itself listens for the "show-alert" event using the "hx-on" attribute and triggers a Javascript alert.
+                </p>
+
+                <!-- Listening for "show-alert" event with hx-on -->
+                <button 
+                    class="btn" 
+                    hx-get="/trigger-event" 
+                    hx-swap="none"
+                    hx-on:show-alert="alert('I got the event!')"
+                >
+                    Trigger Client Event
+                </button>
+            </div>
+        </div>
+
+        <!-- Realtime HTMX Event Log Console -->
+        <div class="console-panel">
+            <div class="console-header">
+                <div class="console-dots">
+                    <div class="dot red"></div>
+                    <div class="dot yellow"></div>
+                    <div class="dot green"></div>
+                </div>
+                <div class="console-title">EWF & HTMX Request Logger</div>
+                <div>Status: Connected</div>
+            </div>
+            <div class="console-content" id="console-logs">
+                <div class="console-line">
+                    <span class="console-time">[11:09:33]</span>
+                    <span class="console-info">[info]</span>
+                    <span>Console initialized. Ready to intercept HTMX events.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Intercept and log HTMX events for educational output -->
+    <script>
+        const logsContainer = document.getElementById('console-logs');
+
+        function addLog(type, message) {
+            const time = new Date().toTimeString().split(' ')[0];
+            const logLine = document.createElement('div');
+            logLine.className = 'console-line';
+            
+            let label = '<span class="console-info">[info]</span>';
+            if (type === 'warn') {
+                label = '<span class="console-warn">[warn]</span>';
+            } else if (type === 'event') {
+                label = '<span style="color: #c084fc">[event]</span>';
+            } else if (type === 'swap') {
+                label = '<span style="color: #34d399">[swap]</span>';
+            }
+            
+            logLine.innerHTML = `<span class="console-time">[${time}]</span> ${label} <span>${message}</span>`;
+            logsContainer.appendChild(logLine);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        // Hook HTMX events
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            addLog('info', `GET request initiated to: ${evt.detail.pathInfo.requestPath}`);
+        });
+
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.successful) {
+                addLog('info', `Response received successfully (Status ${evt.detail.xhr.status})`);
+            } else {
+                addLog('warn', `Request failed (Status ${evt.detail.xhr.status})`);
+            }
+        });
+
+        document.body.addEventListener('htmx:oobBeforeSwap', function(evt) {
+            addLog('swap', `Out-of-Band Swap detected on element: #${evt.detail.target.id}`);
+        });
+
+        // Listen for our custom "show-alert" event
+        document.body.addEventListener('show-alert', function(evt) {
+            addLog('event', `Event "show-alert" dispatched by server. Triggering alert()!`);
+        });
+    </script>
+</body>
+</html>

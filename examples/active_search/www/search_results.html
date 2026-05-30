@@ -1,0 +1,20 @@
+{{if users.count == 0}}
+    <tr>
+        <td colspan="6" class="no-results">No users found matching "{query}"</td>
+    </tr>
+{{else}}
+    {{each user in users}}
+        <tr>
+            <td>{user.id}</td>
+            <td><strong>{user.name}</strong></td>
+            <td>{user.email}</td>
+            <td><span class="badge role">{user.role}</span></td>
+            <td><span class="badge company">{user.company.name}</span></td>
+            <td>
+                <span class="status {{if user.status == Active}}status-active{{else}}status-inactive{{end}}">
+                    {user.status}
+                </span>
+            </td>
+        </tr>
+    {{end}}
+{{end}}

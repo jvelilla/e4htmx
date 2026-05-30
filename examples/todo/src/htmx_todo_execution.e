@@ -14,6 +14,7 @@ inherit
 	WSF_ROUTED_URI_TEMPLATE_HELPER
 	SHARED_EXECUTION_ENVIRONMENT
 	SHARED_DATABASE_MANAGER
+	EWF_GLIMMER_INTEGRATION
 
 create
 	make
@@ -150,6 +151,7 @@ feature -- Handlers
 			l_json: STRING
 			l_html: STRING
 			l_accept: detachable READABLE_STRING_32
+			l_htmx: GLM_HTMX_REQUEST
 		do
 				-- Get Accept header
 			l_accept := req.meta_string_variable ("HTTP_ACCEPT")
@@ -171,15 +173,23 @@ feature -- Handlers
 				l_json.append ("]")
 				new_response_json (req, res, l_json)
 			else
-					-- Return HTML response
-				create l_html.make_from_string (
-					"<div id=%"todo-list%" x-on:description-change=%"editingId = 0%">")
-				across l_todos as todo loop
-					l_html.append (todo_item_html (todo.item))
-				end
+					-- Check if this is a direct browser request (not via HTMX)
+				l_htmx := GLM_HTMX_REQUEST (req)
+				if not l_htmx.is_htmx_request then
+						-- Redirect direct browser requests to the index.html page
+						-- so the user gets the fully styled web app layout.
+					res.redirect_now (req.script_url ("/index.html"))
+				else
+						-- Return HTML fragment for HTMX requests
+					create l_html.make_from_string (
+						"<div id=%"todo-list%" x-on:description-change=%"editingId = 0%">")
+					across l_todos as todo loop
+						l_html.append (todo_item_html (todo.item))
+					end
 
-				l_html.append ("</div>")
-				new_response_html (req, res, l_html)
+					l_html.append ("</div>")
+					new_response_html (req, res, l_html)
+				end
 			end
 		end
 
@@ -301,14 +311,8 @@ feature -- Handlers
 							l_todo.set_description (l_description)
 							l_todo_manager.save (l_todo)
 
-								-- Set HTMX trigger header
-							create h.make
-							h.put_header_key_value ("HX-Trigger", "description-change")
-							h.put_current_date
-							res.put_header_text (h.string)
-
 								-- Return updated todo HTML
-							new_response_html (req, res, todo_item_html (l_todo))
+							new_response_html_with_trigger (req, res, todo_item_html (l_todo), "description-change")
 						else
 								-- Empty description error
 							res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
@@ -364,14 +368,8 @@ feature -- Handlers
 					l_todo.set_completed (1 - l_todo.completed)
 					l_todo_manager.save (l_todo)
 
-						-- Set HTMX trigger header for status update
-					create h.make
-					h.put_header_key_value ("HX-Trigger", "status-change")
-					h.put_current_date
-					res.put_header_text (h.string)
-
 						-- Return updated todo HTML
-					new_response_html (req, res, todo_item_html (l_todo))
+					new_response_html_with_trigger (req, res, todo_item_html (l_todo), "status-change")
 				else
 					res.set_status_code ({HTTP_STATUS_CODE}.not_found)
 					res.put_string ("Todo not found")
@@ -385,39 +383,19 @@ feature -- Handlers
 feature {NONE} -- Implementation
 
 	todo_item_html (todo: TODO): STRING
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
 		do
-			create Result.make_from_string ("")
-			Result.append ("<div class=%"todo-item%" x-data=%"{id: " + todo.id.out + "}%">")
-
-				-- Checkbox with proper HTMX attributes
-			Result.append ("<input type=%"checkbox%" ")
-
-			if todo.completed = 1  then
-				Result.append ("checked ")
+			create l_template.make
+			l_template.set_variable ("todo", todo)
+			l_result := l_template.render_file (document_root.appended ("\todo_item.html").name)
+			
+			if l_template.has_error and then attached l_template.last_error as err then
+				Result := "<div class=%"error%">" + err.to_string_8 + "</div>"
+			else
+				Result := l_result.to_string_8
 			end
-
-			Result.append ("hx-patch=%"/todos/" + todo.id.out +
-				"/toggle-complete%" hx-target=%"closest div%" " +
-				"hx-swap=%"outerHTML%">")
-
-				-- Description text with Alpine.js click handling
-			Result.append ("<div class=%"description%" x-show=%"id !== editingId%" x-on:click.stop=%"editingId = id%" >" + todo.description + "</div>")
-
-				-- Edit input with proper HTMX triggers
-			Result.append ("<input type=%"text%" name=%"description%" " +
-				"value=%"" + todo.description + "%"" +
-				"hx-trigger=%"blur, keyup[keyCode === 13]%" " +
-				"hx-patch=%"/todos/" + todo.id.out + "/description%" " +
-				"hx-target=%"closest div%" hx-swap=%"outerHTML%" " +
-				"x-show=%"id === editingId%" x-on:click.stop=%"%" >")
-
-				-- Delete button with confirmation and animation
-			Result.append ("<button class=%"plain%" " +
-				"hx-confirm=%"Really delete %"" + todo.description + "%"?%" " +
-				"hx-delete=%"/todos/" + todo.id.out + "%"" +
-				"hx-target=%"closest div%" hx-swap=%"delete swap:1s%">Delete</button>")
-
-			Result.append ("</div>")
 		end
 
 	add_todo (req: WSF_REQUEST; res: WSF_RESPONSE; a_description: STRING)
@@ -440,19 +418,13 @@ feature {NONE} -- Implementation
 				create l_todo.make (0, a_description, 0)
 				l_todo_manager.save (l_todo)
 
-					-- Set HTMX trigger for status update
-				create h.make
-				h.put_header_key_value ("HX-Trigger", "status-change")
-				h.put_current_date
-				res.put_header_text (h.string)
-
 					-- Generate HTML for new todo item
 				create l_html.make_empty
 				l_html.append (todo_item_html (l_todo))
 					-- Clear any previous error message
 				l_html.append ("<div class=%"error%"></div>")
 
-				new_response_html (req, res, l_html)
+				new_response_html_with_trigger (req, res, l_html, "status-change")
 			else
 					-- Handle duplicate todo
 				create l_html.make_from_string ("<div class=%"error%">")
@@ -481,5 +453,22 @@ feature {NONE} -- Implementation
 			new_response_html (req, res,
 				"<div id=%"error%" hx-swap-oob=%"true%">" + message + "</div>")
 		end
+
+	new_response_html_with_trigger (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING; a_trigger: READABLE_STRING_8)
+			-- Send HTML response with an HTMX trigger header
+		local
+			h: HTTP_HEADER
+		do
+			create h.make
+			h.put_content_type_text_html
+			h.put_content_length (output.count)
+			h.put_current_date
+			h.put_header_key_value ("HX-Trigger", a_trigger)
+			res.set_status_code ({HTTP_STATUS_CODE}.ok)
+			res.put_header_text (h.string)
+			res.put_string (output)
+		end
+
+
 
 end

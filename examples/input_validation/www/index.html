@@ -1,14 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>htmx Input Validation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleek Input Validation</title>
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
     <script src="https://unpkg.com/htmx.org@2.0.0"></script>
     <!--script src="reload-client.js" type="module"></script>-->
   </head>
   <body>
-    <h2>Sign Up</h2>
-    <form hx-get="/form" hx-trigger="load"></form>
-    <div id="result" />
+    <div class="background-decorations">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+    </div>
+    <div class="card-container">
+      <div class="card-header">
+        <h2>Create Account</h2>
+        <p class="subtitle">Join our platform in seconds.</p>
+      </div>
+      <!-- Form will be loaded here -->
+      <div hx-get="/form" hx-trigger="load" class="form-wrapper"></div>
+      <div id="result" class="result-container"></div>
+    </div>
   </body>
 </html>
