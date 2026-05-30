@@ -28,4 +28,12 @@ feature -- Test routines
 			assert ("headers_contain_push", l_headers.string.has_substring ("HX-Push-Url: /new-path"))
 		end
 
+	test_context_compilation
+			-- Verify EWF_GLIMMER_CONTEXT compiles and compiles type-safely.
+		local
+			l_context: detachable EWF_GLIMMER_CONTEXT
+		do
+			assert ("context_compiled", l_context = Void)
+		end
+
 end
