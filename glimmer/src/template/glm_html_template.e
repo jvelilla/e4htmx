@@ -291,23 +291,19 @@ feature -- HTMX Metadata
 		end
 
 	htmx_trigger_header: STRING_32
-			-- Serialise trigger_events as JSON for the HX-Trigger header
+			-- Serialise `trigger_events' as a comma-separated list of event names for the HX-Trigger header.
 		local
 			l_first: BOOLEAN
 		do
 			create Result.make (100)
-			Result.append ("{")
 			l_first := True
 			across trigger_events as event loop
 				if not l_first then
 					Result.append (", ")
 				end
-				Result.append ("%"")
 				Result.append (event.item)
-				Result.append ("%":true")
 				l_first := False
 			end
-			Result.append ("}")
 		end
 
 	set_push_url (url: READABLE_STRING_GENERAL)

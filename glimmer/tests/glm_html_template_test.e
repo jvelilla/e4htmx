@@ -1077,7 +1077,7 @@ feature -- Test routines
 			create l_template.make
 			l_template.add_trigger ("event1")
 			l_template.add_trigger ("event2")
-			assert ("trigger_header", l_template.htmx_trigger_header.same_string_general ("{%"event1%":true, %"event2%":true}"))
+			assert ("trigger_header", l_template.htmx_trigger_header.same_string_general ("event1, event2"))
 
 			l_template.set_push_url ("/new-url")
 			l_template.set_replace_url ("/replaced-url")

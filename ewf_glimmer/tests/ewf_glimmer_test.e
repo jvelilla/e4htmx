@@ -24,7 +24,7 @@ feature -- Test routines
 			create l_integration
 			l_integration.apply_htmx_headers (l_template, l_headers)
 
-			assert ("headers_contain_trigger", l_headers.string.has_substring ("HX-Trigger: {%"status-change%":true}"))
+			assert ("headers_contain_trigger", l_headers.string.has_substring ("HX-Trigger: status-change"))
 			assert ("headers_contain_push", l_headers.string.has_substring ("HX-Push-Url: /new-path"))
 		end
 

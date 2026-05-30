@@ -289,19 +289,21 @@ feature -- Events
 		local
 			h: HTTP_HEADER
 			l_trigger: STRING
+			l_output: STRING
 		do
 				-- Create JSON string for the trigger
 			l_trigger := "{%"event2%":%"some string%"}"
+			l_output := "dispatched event2"
 
 			create h.make
 			h.put_content_type_text_plain
 			h.put_header_key_value ("HX-Trigger", l_trigger)
-			h.put_content_length (17)
+			h.put_content_length (l_output.count)
 			h.put_current_date
 
 			res.set_status_code ({HTTP_STATUS_CODE}.ok)
 			res.put_header_text (h.string)
-			res.put_string ("dispatched event2")
+			res.put_string (l_output)
 		end
 
 	handle_event_with_object (req: WSF_REQUEST; res: WSF_RESPONSE)
@@ -309,19 +311,21 @@ feature -- Events
 		local
 			h: HTTP_HEADER
 			l_trigger: STRING
+			l_output: STRING
 		do
 				-- Create JSON string for the trigger with nested object
 			l_trigger := "{%"event3%":{%"foo%":1,%"bar%":2}}"
+			l_output := "dispatched event3"
 
 			create h.make
 			h.put_content_type_text_plain
 			h.put_header_key_value ("HX-Trigger", l_trigger)
-			h.put_content_length (17)
+			h.put_content_length (l_output.count)
 			h.put_current_date
 
 			res.set_status_code ({HTTP_STATUS_CODE}.ok)
 			res.put_header_text (h.string)
-			res.put_string ("dispatched event3")
+			res.put_string (l_output)
 		end
 
 	handle_trigger (req: WSF_REQUEST; res: WSF_RESPONSE)
