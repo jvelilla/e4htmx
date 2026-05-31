@@ -130,23 +130,29 @@ feature -- Response Rendering
 
 	html (a_html: READABLE_STRING_GENERAL)
 			-- Send HTML response.
+		local
+			l_conv: UTF_CONVERTER
 		do
 			headers.put_content_type_text_html
-			send (a_html.to_string_8)
+			send (l_conv.utf_32_string_to_utf_8_string_8 (a_html))
 		end
 
 	text (a_text: READABLE_STRING_GENERAL)
 			-- Send plain text response.
+		local
+			l_conv: UTF_CONVERTER
 		do
 			headers.put_content_type_text_plain
-			send (a_text.to_string_8)
+			send (l_conv.utf_32_string_to_utf_8_string_8 (a_text))
 		end
 
 	json (a_json: READABLE_STRING_GENERAL)
 			-- Send JSON response.
+		local
+			l_conv: UTF_CONVERTER
 		do
 			headers.put_content_type (Content_type_json)
-			send (a_json.to_string_8)
+			send (l_conv.utf_32_string_to_utf_8_string_8 (a_json))
 		end
 
 	empty

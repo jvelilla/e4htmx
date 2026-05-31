@@ -17,6 +17,7 @@ This project demonstrates the integration of the [Eiffel Web Framework (EWF)](ht
 │   ├── filters_demo.html      # Educational filters & helpers template
 │   ├── dbc_demo.html          # Design by Contract playground
 │   ├── components_demo.html   # Component composition sandbox
+│   ├── slots_demo.html        # Slots & content projection sandbox
 │   └── styles.css             # Premium dark-theme stylesheet
 └── htmx_demo.ecf              # Eiffel configuration file (targets & libraries)
 ```
@@ -29,6 +30,7 @@ This application demonstrates how to:
 - Use HTMX attributes for real-time frontend updates (CRUD + inline deletions) without writing custom JavaScript.
 - Apply Glimmer's **built-in filters** and **custom Eiffel agents** as template formatting helper pipelines.
 - Support **Component Model (Composition)** with parameterized includes, variable scope isolation, and DbC preconditions.
+- Support **Slots and Content Projection** via named `{{slot}}` blocks filled by nested `{{fill}}` elements.
 - Build interactive, live-reloading playgrounds that parse and render Glimmer templates on-the-fly.
 
 ---
@@ -65,6 +67,15 @@ The application serves two main interactive routes:
 - **Dynamic Sandboxing**: Edit both the sub-component template and the calling page template in real-time.
 - **DbC boundaries**: Toggle required component inputs to trigger fast-failing preconditions.
 
+### 5. Component Slots Playground (`/slots-demo`)
+- **Content Projection**: Try out template slots (`{{slot slot_name}}`) filled dynamically from the caller using fill blocks (`{{fill slot_name}}...{{end}}`).
+- **4 Practice Scenarios**: Practice slots step-by-step with 1-click loading scenarios:
+  1. *Basic Card:* Learn card content projection.
+  2. *Alert Banner:* Project icons and success alert messages.
+  3. *Scoped Isolation:* Verify that slot variables are strictly isolated and resolve safely without context bleed.
+  4. *Missing Fills:* See how unfilled slots evaluate safely to empty strings.
+- **Interactive Sandbox & Terminal**: Edit the parent variables, slot-component template, and calling template code. Watch the layout re-compile and display in the retro terminal output dynamically.
+
 ---
 
 ## Getting Started
@@ -96,10 +107,11 @@ The application serves two main interactive routes:
    *The server will start on port **9999** by default.*
 
 4. Access the application at:
-   - Dashboard: [http://localhost:9999/](http://localhost:9999/)
-   - Filters Showcase: [http://localhost:9999/filters-demo](http://localhost:9999/filters-demo)
-   - DbC Playground: [http://localhost:9999/dbc-demo](http://localhost:9999/dbc-demo)
-   - Components Playground: [http://localhost:9999/components-demo](http://localhost:9999/components-demo)
+    - Dashboard: [http://localhost:9999/](http://localhost:9999/)
+    - Filters Showcase: [http://localhost:9999/filters-demo](http://localhost:9999/filters-demo)
+    - DbC Playground: [http://localhost:9999/dbc-demo](http://localhost:9999/dbc-demo)
+    - Components Playground: [http://localhost:9999/components-demo](http://localhost:9999/components-demo)
+    - Slots Playground: [http://localhost:9999/slots-demo](http://localhost:9999/slots-demo)
 
 ## Technical Integration
 

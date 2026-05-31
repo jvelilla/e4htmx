@@ -1318,4 +1318,76 @@ feature -- Test routines
 			assert ("commas_in_quotes_include", l_result.same_string ("Message: Hello, world!, From: Bob"))
 		end
 
+	test_slots_basic
+			-- Test basic slot rendering with named slots and fills
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_basic", "<div class=%"card%"><div class=%"card-header%">{{slot header}}</div><div class=%"card-body%">{{slot content}}</div></div>")
+			
+			l_result := l_template.render ("{{include card_basic}}{{fill header}}<h2>My Title</h2>{{end}}{{fill content}}<p>Body text here.</p>{{end}}{{end}}")
+			assert ("basic_slots_rendered", l_result.same_string ("<div class=%"card%"><div class=%"card-header%"><h2>My Title</h2></div><div class=%"card-body%"><p>Body text here.</p></div></div>"))
+		end
+
+	test_slots_nested
+			-- Test nested slot rendering to ensure slot scopes do not bleed or collide
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_nested_outer", "<div class=%"outer%">{{slot main}}</div>")
+			l_template.register_partial ("card_nested_inner", "<span class=%"inner%">{{slot label}}</span>")
+			
+			l_result := l_template.render ("{{include card_nested_outer}}{{fill main}}Outer content and {{include card_nested_inner}}{{fill label}}Inner Label{{end}}{{end}}{{end}}{{end}}")
+			assert ("nested_slots_rendered", l_result.same_string ("<div class=%"outer%">Outer content and <span class=%"inner%">Inner Label</span></div>"))
+		end
+
+	test_slots_missing
+			-- Test that missing fills are rendered as empty strings
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_missing", "<div class=%"card%"><div class=%"card-header%">{{slot header}}</div><div class=%"card-body%">{{slot content}}</div></div>")
+			
+			l_result := l_template.render ("{{include card_missing}}{{fill content}}<p>Body text here.</p>{{end}}{{end}}")
+			assert ("missing_fill_rendered", l_result.same_string ("<div class=%"card%"><div class=%"card-header%"></div><div class=%"card-body%"><p>Body text here.</p></div></div>"))
+		end
+
+	test_slots_conditional
+			-- Test slots placed inside conditional blocks in component templates
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_conditional", "<div class=%"card%">{{if show_header}}<div class=%"card-header%">{{slot header}}</div>{{else}}No header{{end}}</div>")
+			
+			l_template.set_variable ("show_header", True)
+			l_result := l_template.render ("{{include card_conditional}}{{fill header}}<h2>My Title</h2>{{end}}{{end}}")
+			assert ("conditional_slot_true", l_result.same_string ("<div class=%"card%"><div class=%"card-header%"><h2>My Title</h2></div></div>"))
+			
+			l_template.set_variable ("show_header", False)
+			l_result := l_template.render ("{{include card_conditional}}{{fill header}}<h2>My Title</h2>{{end}}{{end}}")
+			assert ("conditional_slot_false", l_result.same_string ("<div class=%"card%">No header</div>"))
+		end
+
+	test_slots_dynamic_context
+			-- Test that fills containing parent-context variables are resolved correctly
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_dynamic", "<div class=%"card%">{{slot content}}</div>")
+			l_template.set_variable ("user_name", "Javier")
+			
+			l_result := l_template.render ("{{include card_dynamic}}{{fill content}}<p>Hello, {user_name}!</p>{{end}}{{end}}")
+			assert ("dynamic_slot_variables", l_result.same_string ("<div class=%"card%"><p>Hello, Javier!</p></div>"))
+		end
+
 end

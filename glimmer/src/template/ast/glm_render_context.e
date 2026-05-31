@@ -26,6 +26,8 @@ feature {NONE} -- Initialization
 			current_recursion_depth := 0
 			contract_mode := a_contract_mode
 			create sections.make (5)
+			create slots.make (5)
+			is_partial_boundary := False
 			last_error := Void
 			is_isolated := False
 		ensure
@@ -46,6 +48,8 @@ feature {NONE} -- Initialization
 			filter_registry := a_parent.filter_registry
 			helper_registry := a_parent.helper_registry
 			sections := a_parent.sections
+			create slots.make (5)
+			is_partial_boundary := False
 			max_recursion_depth := a_parent.max_recursion_depth
 			current_recursion_depth := a_parent.current_recursion_depth
 			auto_escape := a_parent.auto_escape
@@ -74,6 +78,22 @@ feature -- Access
 
 	sections: STRING_TABLE [STRING_32]
 			-- Rendered sections (stored during section evaluation, retrieved during yield)
+
+	slots: STRING_TABLE [STRING_32]
+			-- Pre-rendered slot contents for content projection
+
+	is_partial_boundary: BOOLEAN
+			-- Is this context a partial template boundary?
+
+	slot (a_name: READABLE_STRING_GENERAL): detachable STRING_32
+			-- Resolved slot content by name
+		do
+			if slots.has (a_name) then
+				Result := slots.item (a_name)
+			elseif not is_partial_boundary and then attached parent_context as parent then
+				Result := parent.slot (a_name)
+			end
+		end
 
 	max_recursion_depth: INTEGER
 			-- Maximum allowed recursion depth
@@ -174,6 +194,14 @@ feature -- Scoped Context
 			is_isolated_set: is_isolated = a_val
 		end
 
+	set_is_partial_boundary (a_val: BOOLEAN)
+			-- Set `is_partial_boundary` status
+		do
+			is_partial_boundary := a_val
+		ensure
+			is_partial_boundary_set: is_partial_boundary = a_val
+		end
+
 feature {GLM_RENDER_CONTEXT} -- Implementation
 
 	set_current_recursion_depth (a_depth: INTEGER)
@@ -245,20 +273,23 @@ feature -- Operations and Parsing
 	render_partial (template_str: STRING_32; a_name: STRING_32; a_buffer: STRING_32)
 			-- Compile and render partial template directly into `a_buffer` using incremented depth context
 		local
-			l_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]
-			l_sub_context: GLM_RENDER_CONTEXT
+			l_slots: STRING_TABLE [STRING_32]
 		do
-			l_nodes := get_compiled_template_with_name (template_str, a_name)
-			if not has_error then
-				l_sub_context := incremented_depth_context
-				across l_nodes as node loop
-					node.item.render (l_sub_context, a_buffer)
-				end
-			end
+			create l_slots.make (0)
+			render_partial_with_slots (template_str, a_name, Void, l_slots, a_buffer)
 		end
 
 	render_partial_with (template_str: STRING_32; a_name: STRING_32; a_params: STRING_TABLE [STRING_32]; a_buffer: STRING_32)
 			-- Compile and render partial template with parameters in an isolated child context directly into `a_buffer`
+		local
+			l_slots: STRING_TABLE [STRING_32]
+		do
+			create l_slots.make (0)
+			render_partial_with_slots (template_str, a_name, a_params, l_slots, a_buffer)
+		end
+
+	render_partial_with_slots (template_str: STRING_32; a_name: STRING_32; a_params: detachable STRING_TABLE [STRING_32]; a_slots: STRING_TABLE [STRING_32]; a_buffer: STRING_32)
+			-- Compile and render partial template with optional parameters and slots directly into `a_buffer`
 		local
 			l_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]
 			l_sub_context: GLM_RENDER_CONTEXT
@@ -266,11 +297,19 @@ feature -- Operations and Parsing
 		do
 			l_nodes := get_compiled_template_with_name (template_str, a_name)
 			if not has_error then
-				create l_resolved_vars.make (a_params.count)
-				across a_params as param_cursor loop
-					l_resolved_vars.force (resolve_value (param_cursor.item), param_cursor.key)
+				if attached a_params as l_params then
+					create l_resolved_vars.make (l_params.count)
+					across l_params as param_cursor loop
+						l_resolved_vars.force (resolve_value (param_cursor.item), param_cursor.key)
+					end
+					l_sub_context := make_child_with (l_resolved_vars)
+				else
+					l_sub_context := incremented_depth_context
 				end
-				l_sub_context := make_child_with (l_resolved_vars)
+				l_sub_context.set_is_partial_boundary (True)
+				across a_slots as slot_cursor loop
+					l_sub_context.slots.force (slot_cursor.item, slot_cursor.key)
+				end
 				across l_nodes as node loop
 					node.item.render (l_sub_context, a_buffer)
 				end

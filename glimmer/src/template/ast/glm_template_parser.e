@@ -83,7 +83,7 @@ feature -- Parsing
 							l_tag.left_adjust
 							l_tag.right_adjust
 							
-							process_block_tag (l_tag)
+							process_block_tag (l_tag, l_end_pos + 2)
 							
 							l_text_start := l_end_pos + 2
 							i := l_end_pos + 2
@@ -290,7 +290,7 @@ feature {NONE} -- Parser State
 
 feature {NONE} -- Tag Processing
 
-	process_block_tag (a_tag: STRING_32)
+	process_block_tag (a_tag: STRING_32; a_next_pos: INTEGER)
 			-- Process trimmed tag string `a_tag` and mutate parser state
 		local
 			l_parts: ARRAYED_LIST [STRING_32]
@@ -305,6 +305,9 @@ feature {NONE} -- Tag Processing
 			l_sec_node: GLM_SECTION_NODE
 			l_y_node: GLM_YIELD_NODE
 			l_inc_node: GLM_INCLUDE_NODE
+			l_fill_node: GLM_FILL_NODE
+			l_slot_node: GLM_SLOT_NODE
+			l_body: ARRAYED_LIST [GLM_TEMPLATE_NODE]
 			false_branch: ARRAYED_LIST [GLM_TEMPLATE_NODE]
 			l_req_content: STRING_32
 			l_req_vars: ARRAYED_LIST [STRING_32]
@@ -435,7 +438,39 @@ feature {NONE} -- Tag Processing
 				else
 					create l_inc_node.make (l_inc_name)
 				end
-				active_list.extend (l_inc_node)
+				
+				if is_block_include (a_next_pos) then
+					create l_body.make (5)
+					l_inc_node.set_body (l_body)
+					active_list.extend (l_inc_node)
+					
+					stack.extend (active_list)
+					node_stack.extend (l_inc_node)
+					active_list := l_body
+				else
+					active_list.extend (l_inc_node)
+				end
+				
+			elseif a_tag.starts_with ("fill ") then
+				l_cond := a_tag.substring (6, a_tag.count)
+				l_cond.left_adjust
+				l_cond.right_adjust
+				
+				create l_body.make (10)
+				create l_fill_node.make (l_cond, l_body)
+				active_list.extend (l_fill_node)
+				
+				stack.extend (active_list)
+				node_stack.extend (l_fill_node)
+				active_list := l_body
+				
+			elseif a_tag.starts_with ("slot ") then
+				l_cond := a_tag.substring (6, a_tag.count)
+				l_cond.left_adjust
+				l_cond.right_adjust
+				
+				create l_slot_node.make (l_cond)
+				active_list.extend (l_slot_node)
 				
 			elseif a_tag.starts_with ("require ") then
 				l_req_content := a_tag.substring (9, a_tag.count)
@@ -472,8 +507,25 @@ feature {NONE} -- Tag Processing
 					active_list.extend (l_req_node)
 				end
 				
-			else
-				last_error := "Unknown block tag: " + a_tag
+			end
+		end
+
+	is_block_include (a_start_pos: INTEGER): BOOLEAN
+			-- Does the include tag starting at index `a_start_pos` have fill blocks?
+		local
+			l_pos: INTEGER
+			l_next_tag: STRING_32
+			l_end: INTEGER
+		do
+			l_pos := template.substring_index ("{{", a_start_pos)
+			if l_pos > 0 then
+				l_end := template.substring_index ("}}", l_pos + 2)
+				if l_end > 0 then
+					l_next_tag := template.substring (l_pos + 2, l_end - 1)
+					l_next_tag.left_adjust
+					l_next_tag.right_adjust
+					Result := l_next_tag.starts_with ("fill ")
+				end
 			end
 		end
 

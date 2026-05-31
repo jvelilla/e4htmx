@@ -30,6 +30,10 @@
   - Section definitions with `{{section name}}...{{end}}`
   - Content placement with `{{yield section_name}}`
   - Inclusion of partial templates via `{{include partial_name}}`
+- ✓ **Slot Support & Content Projection**:
+  - Declare placeholder slots in component templates using `{{slot name}}`
+  - Project content into named slots using `{{fill name}}...{{end}}` blocks nested within an `{{include component}}...{{end}}` block include
+  - Variable scope isolation between component context and caller template context
 - ✓ **HTMX Partials**:
   - Targeted section rendering via `render_section` to support returning layout-free HTML fragments
 - ✓ **Error Reporting**:
@@ -144,3 +148,33 @@ Layout features:
 3. Variables, conditionals, and loops within sections
 4. Nested layout support
 5. Easy to disable with clear_layout
+
+## Slot Support & Content Projection
+
+Declare named slots inside component templates (partials) to allow calling templates to inject custom HTML content:
+
+```html
+<!-- Inside a component template, e.g. components/card.html -->
+<div class="card">
+    <div class="card-header">{{slot header}}</div>
+    <div class="card-body">{{slot content}}</div>
+</div>
+```
+
+Then project content into those slots from a calling template using `{{fill name}}` blocks:
+
+```html
+<!-- Inside calling template -->
+{{include card}}
+    {{fill header}}
+        <h3>My Custom Header</h3>
+    {{end}}
+    {{fill content}}
+        <p>This paragraph is projected into the card body.</p>
+    {{end}}
+{{end}}
+```
+
+### Slot Isolation Rules:
+- **Scope Safety**: Content projected inside `{{fill}}` blocks resolves variable bindings in the **caller's context** where they are defined, not the component's context, preventing unintended variables bleeding.
+- **Missing Fills**: If a slot is declared in a component but the caller does not provide a matching `{{fill}}` block, Glimmer renders it safely as an empty string.

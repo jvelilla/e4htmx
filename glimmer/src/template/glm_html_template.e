@@ -194,6 +194,9 @@ feature -- Element Change
 			create l_name.make_from_string (name.to_string_32)
 			create l_tmpl.make_from_string (template.to_string_32)
 			partials.force (l_tmpl, l_name)
+			if compiled_templates_cache.has (l_name) then
+				compiled_templates_cache.remove (l_name)
+			end
 		end
 
 	register_partial_file (name: READABLE_STRING_GENERAL; filename: READABLE_STRING_GENERAL)

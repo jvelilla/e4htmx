@@ -40,18 +40,37 @@ feature -- Access
 	parameters: detachable STRING_TABLE [STRING_32]
 			-- Scoped child parameters (if any)
 
+	body: detachable ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			-- Nested fill blocks (if any)
+
+feature -- Element Change
+
+	set_body (a_body: ARRAYED_LIST [GLM_TEMPLATE_NODE])
+			-- Set `body`
+		do
+			body := a_body
+		ensure
+			body_set: body = a_body
+		end
+
 feature -- Rendering
 
 	render (a_context: GLM_RENDER_CONTEXT; a_buffer: STRING_32)
 			-- Retrieve and recursively render the partial template
+		local
+			l_slots: STRING_TABLE [STRING_32]
 		do
 			if not a_context.is_recursion_depth_reached then
 				if a_context.partials.has (name) and then attached a_context.partials.item (name) as l_partial then
-					if attached parameters as l_params then
-						a_context.render_partial_with (l_partial, name, l_params, a_buffer)
-					else
-						a_context.render_partial (l_partial, name, a_buffer)
+					create l_slots.make (5)
+					if attached body as l_body then
+						across l_body as node loop
+							if attached {GLM_FILL_NODE} node.item as l_fill then
+								l_slots.force (l_fill.render_to_string (a_context), l_fill.name)
+							end
+						end
 					end
+					a_context.render_partial_with_slots (l_partial, name, parameters, l_slots, a_buffer)
 				end
 			end
 		end
