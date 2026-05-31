@@ -1,0 +1,27 @@
+<div class="todo-item" x-data="todoState({todo.id})">
+    <input type="checkbox"
+           {{if todo.completed == 1}}checked{{end}}
+           hx-patch="/todos/{todo.id}/toggle-complete"
+           hx-target="closest div"
+           hx-swap="outerHTML">
+    
+    <div class="description"
+         x-show="id !== editingId"
+         x-on:click.stop="editingId = id">{todo.description}</div>
+    
+    <input type="text"
+           name="description"
+           value="{todo.description}"
+           hx-trigger="blur, keyup[keyCode === 13]"
+           hx-patch="/todos/{todo.id}/description"
+           hx-target="closest div"
+           hx-swap="outerHTML"
+           x-show="id === editingId"
+           x-on:click.stop="">
+    
+    <button class="plain"
+            hx-confirm="Really delete {todo.description}?"
+            hx-delete="/todos/{todo.id}"
+            hx-target="closest div"
+            hx-swap="delete swap:1s">Delete</button>
+</div>

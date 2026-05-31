@@ -12,7 +12,7 @@ create
 
 feature {NONE} -- Initialization
 
-	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_filter_registry: GLM_FILTER_REGISTRY; a_helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_cache: HASH_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE], STRING_32]; a_max_cache_size: INTEGER)
+	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_filter_registry: GLM_FILTER_REGISTRY; a_helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_cache: HASH_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE], STRING_32]; a_max_cache_size: INTEGER; a_contract_mode: BOOLEAN)
 			-- Initialize root context with initial bindings and config
 		do
 			variables := a_variables
@@ -24,6 +24,7 @@ feature {NONE} -- Initialization
 			cache := a_cache
 			max_cache_size := a_max_cache_size
 			current_recursion_depth := 0
+			contract_mode := a_contract_mode
 			create sections.make (5)
 			last_error := Void
 		ensure
@@ -32,6 +33,7 @@ feature {NONE} -- Initialization
 			filter_registry_set: filter_registry = a_filter_registry
 			helper_registry_set: helper_registry = a_helper_registry
 			cache_set: cache = a_cache
+			contract_mode_set: contract_mode = a_contract_mode
 		end
 
 	make_sub (a_parent: GLM_RENDER_CONTEXT)
@@ -48,8 +50,10 @@ feature {NONE} -- Initialization
 			auto_escape := a_parent.auto_escape
 			cache := a_parent.cache
 			max_cache_size := a_parent.max_cache_size
+			contract_mode := a_parent.contract_mode
 		ensure
 			parent_set: parent_context = a_parent
+			contract_mode_inherited: contract_mode = a_parent.contract_mode
 		end
 
 feature -- Access
@@ -86,6 +90,12 @@ feature -- Access
 
 	last_error: detachable STRING_32
 			-- Description of the last parsing or compilation error
+
+	last_contract_violation: detachable STRING_32
+			-- Description of the last contract violation
+
+	contract_mode: BOOLEAN
+			-- Is contract mode enabled?
 
 	parent_context: detachable GLM_RENDER_CONTEXT
 			-- Parent scope context if nested
@@ -156,6 +166,18 @@ feature -- Operations and Parsing
 			if attached parent_context as p then
 				p.set_error (a_error)
 			end
+		end
+
+	set_contract_violation (a_violation: STRING_32)
+			-- Set the last contract violation and propagate to parent context
+		do
+			last_contract_violation := a_violation
+			set_error ("Contract violation: " + a_violation)
+			if attached parent_context as p then
+				p.set_contract_violation (a_violation)
+			end
+		ensure
+			violation_set: last_contract_violation = a_violation
 		end
 
 

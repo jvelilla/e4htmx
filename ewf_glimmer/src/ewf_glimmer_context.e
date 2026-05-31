@@ -181,7 +181,11 @@ feature -- Response Rendering
 		do
 			l_html := a_template.render (a_template_text)
 			apply_htmx_headers (a_template, headers)
-			if a_template.has_error and then attached a_template.last_error as l_err then
+			if a_template.has_contract_violation and then attached a_template.last_contract_violation as l_violation then
+				set_status ({HTTP_STATUS_CODE}.unprocessable_entity)
+				headers.put_header_key_value ("HX-Trigger", "{\%"glimmer:contract-violation\%": \%"" + l_violation.to_string_8 + "%"}")
+				html (Error_div_start + "Contract violation: " + l_violation.to_string_8 + Error_div_end)
+			elseif a_template.has_error and then attached a_template.last_error as l_err then
 				set_status ({HTTP_STATUS_CODE}.internal_server_error)
 				html (Error_div_start + l_err.to_string_8 + Error_div_end)
 			else
@@ -196,7 +200,11 @@ feature -- Response Rendering
 		do
 			l_html := a_template.render_file (a_file_path)
 			apply_htmx_headers (a_template, headers)
-			if a_template.has_error and then attached a_template.last_error as l_err then
+			if a_template.has_contract_violation and then attached a_template.last_contract_violation as l_violation then
+				set_status ({HTTP_STATUS_CODE}.unprocessable_entity)
+				headers.put_header_key_value ("HX-Trigger", "{\%"glimmer:contract-violation\%": \%"" + l_violation.to_string_8 + "%"}")
+				html (Error_div_start + "Contract violation: " + l_violation.to_string_8 + Error_div_end)
+			elseif a_template.has_error and then attached a_template.last_error as l_err then
 				set_status ({HTTP_STATUS_CODE}.internal_server_error)
 				html (Error_div_start + l_err.to_string_8 + Error_div_end)
 			else

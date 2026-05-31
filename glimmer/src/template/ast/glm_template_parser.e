@@ -43,6 +43,8 @@ feature -- Parsing
 			l_val_end: INTEGER
 			l_text_node: GLM_TEXT_NODE
 			l_var_node: GLM_VARIABLE_NODE
+			l_dump_node: GLM_DUMP_NODE
+			l_dump_var: STRING_32
 			l_raw_var_content: STRING_32
 			l_parsed: TUPLE [var_name: STRING_32; filters: ARRAYED_LIST [GLM_FILTER_INVOCATION]]
 		do
@@ -113,10 +115,20 @@ feature -- Parsing
 								l_raw_var_content.right_adjust
 							end
 							
-							l_parsed := parse_placeholder_content (l_raw_var_content)
-							
-							create l_var_node.make (l_parsed.var_name, l_raw, l_parsed.filters)
-							active_list.extend (l_var_node)
+							if l_raw_var_content.same_string ("dump_context") then
+								create l_dump_node.make_context
+								active_list.extend (l_dump_node)
+							elseif l_raw_var_content.starts_with ("dump ") then
+								l_dump_var := l_raw_var_content.substring (6, l_raw_var_content.count)
+								l_dump_var.left_adjust
+								l_dump_var.right_adjust
+								create l_dump_node.make_variable (l_dump_var)
+								active_list.extend (l_dump_node)
+							else
+								l_parsed := parse_placeholder_content (l_raw_var_content)
+								create l_var_node.make (l_parsed.var_name, l_raw, l_parsed.filters)
+								active_list.extend (l_var_node)
+							end
 							
 							l_text_start := l_val_end + 1
 							i := l_val_end + 1
@@ -294,6 +306,12 @@ feature {NONE} -- Tag Processing
 			l_y_node: GLM_YIELD_NODE
 			l_inc_node: GLM_INCLUDE_NODE
 			false_branch: ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			l_req_content: STRING_32
+			l_req_vars: ARRAYED_LIST [STRING_32]
+			l_req_node: GLM_REQUIRE_NODE
+			l_expr_parser: GLM_EXPRESSION_PARSER
+			l_expr: GLM_EXPRESSION_NODE
+			i: INTEGER
 		do
 			if a_tag.starts_with ("if ") then
 				l_cond := a_tag.substring (4, a_tag.count)
@@ -406,6 +424,41 @@ feature {NONE} -- Tag Processing
 				create l_inc_node.make (l_inc_name)
 				active_list.extend (l_inc_node)
 				
+			elseif a_tag.starts_with ("require ") then
+				l_req_content := a_tag.substring (9, a_tag.count)
+				l_req_content.left_adjust
+				l_req_content.right_adjust
+				
+				if l_req_content.has (',') then
+					l_parts := split_string (l_req_content, ",")
+					create l_req_vars.make (l_parts.count)
+					from
+						i := 1
+					until
+						i > l_parts.count
+					loop
+						l_cond := l_parts.i_th (i)
+						l_cond.left_adjust
+						l_cond.right_adjust
+						if not l_cond.is_empty then
+							l_req_vars.extend (l_cond)
+						end
+						i := i + 1
+					end
+					create l_req_node.make_variables (l_req_content, l_req_vars)
+					active_list.extend (l_req_node)
+				elseif is_simple_path (l_req_content) then
+					create l_req_vars.make (1)
+					l_req_vars.extend (l_req_content)
+					create l_req_node.make_variables (l_req_content, l_req_vars)
+					active_list.extend (l_req_node)
+				else
+					create l_expr_parser.make
+					l_expr := l_expr_parser.parse (l_req_content)
+					create l_req_node.make_expression (l_req_content, l_expr)
+					active_list.extend (l_req_node)
+				end
+				
 			else
 				last_error := "Unknown block tag: " + a_tag
 			end
@@ -431,6 +484,24 @@ feature {NONE} -- Tag Processing
 			end
 			create l_item.make_from_string (s.substring (l_start, s.count))
 			Result.extend (l_item)
+		end
+
+	is_simple_path (s: STRING_32): BOOLEAN
+			-- Is `s` a simple variable path name (alphanumeric, underscore, dot, no spaces or operators)?
+		local
+			j: INTEGER
+			c: CHARACTER_32
+		do
+			Result := not s.is_empty
+			from
+				j := 1
+			until
+				j > s.count or not Result
+			loop
+				c := s.item (j)
+				Result := c.is_alpha_numeric or c = '_' or c = '.'
+				j := j + 1
+			end
 		end
 
 end

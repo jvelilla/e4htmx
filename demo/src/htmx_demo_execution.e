@@ -77,6 +77,8 @@ feature -- Router
 			map_uri_agent ("/trigger", agent handle_trigger, router.methods_GET)
 			map_uri_agent ("/filters-demo", agent handle_filters_demo, router.methods_GET)
 			map_uri_agent ("/filters-demo/render", agent handle_filters_playground_render, router.methods_POST)
+			map_uri_agent ("/dbc-demo", agent handle_dbc_demo, router.methods_GET)
+			map_uri_agent ("/dbc-demo/render", agent handle_dbc_playground_render, router.methods_POST)
 
 			create www.make_with_path (document_root)
 			www.set_directory_index (<<"index2.html">>)
@@ -747,6 +749,154 @@ feature -- Template Helpers
 			end
 		ensure
 			result_attached: Result /= Void
+		end
+
+	handle_dbc_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer DbC and playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_user: USER_PROFILE
+			l_skills: ARRAYED_LIST [STRING_32]
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Enable contract mode by default for playground showcase
+			l_template.set_contract_mode (True)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Design by Contract Playground")
+			l_template.set_variable ("username", "Javier")
+			l_template.set_variable ("age", 30)
+			l_template.set_variable ("is_admin", True)
+			
+			create l_user.make ("Javier", 30, True)
+			l_template.set_variable ("user", l_user)
+			
+			create l_skills.make (3)
+			l_skills.extend ("Eiffel")
+			l_skills.extend ("HTMX")
+			l_skills.extend ("Glimmer")
+			l_template.set_variable ("skills", l_skills)
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("dbc_demo.html").name)
+		end
+
+	handle_dbc_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from DbC playground to compile and render template
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_username: detachable STRING_32
+			l_age: INTEGER
+			l_is_admin: BOOLEAN
+			l_contract_mode: BOOLEAN
+			l_validation_mode: BOOLEAN
+			l_tpl_str: STRING_32
+			l_user: USER_PROFILE
+			l_skills: ARRAYED_LIST [STRING_32]
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_username := c.form_value ("username")
+			if l_username /= Void then
+				l_username.left_adjust
+				l_username.right_adjust
+			end
+			
+			if attached c.form_value ("age") as a and then a.is_integer then
+				l_age := a.to_integer
+			else
+				l_age := 0
+			end
+			
+			l_is_admin := c.form_value ("is_admin") /= Void
+			l_contract_mode := c.form_value ("contract_mode") /= Void
+			l_validation_mode := c.form_value ("validation_mode") /= Void
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := "Hello {username}!"
+			end
+			
+			-- 1. Input Validation Phase (Boundary check in controller)
+			if l_validation_mode then
+				if l_username = Void or else l_username.is_empty then
+					c.set_status ({HTTP_STATUS_CODE}.ok) -- user error is handled flow, 200 OK
+					c.html ("[
+						<div class="validation-error-banner" style="background-color: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 1.25rem; border-radius: var(--radius-md); color: #fcd34d;">
+							<h4 style="margin: 0 0 0.5rem 0; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #f59e0b; display: flex; align-items: center; gap: 0.5rem;">
+								<span>⚠️</span> User Input Validation Error (Soft Flow)
+							</h4>
+							<p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+								<strong>Validation failure:</strong> Username is a required field and cannot be blank.
+							</p>
+							<p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+								<em>Eiffel Controller:</em> "We intercepted the user error at the boundary. We will NOT attempt to render the contracted template because the required data is missing. This is a clean input validation flow."
+							</p>
+						</div>
+					]")
+				elseif l_age < 18 then
+					c.set_status ({HTTP_STATUS_CODE}.ok)
+					c.html ("[
+						<div class="validation-error-banner" style="background-color: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 1.25rem; border-radius: var(--radius-md); color: #fcd34d;">
+							<h4 style="margin: 0 0 0.5rem 0; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #f59e0b; display: flex; align-items: center; gap: 0.5rem;">
+								<span>⚠️</span> User Input Validation Error (Soft Flow)
+							</h4>
+							<p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+								<strong>Validation failure:</strong> Registration is restricted to age 18 or above (Provided: " + l_age.out + ").
+							</p>
+							<p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+								<em>Eiffel Controller:</em> "We intercepted the user error at the boundary. We will NOT attempt to render the contracted template because the precondition age >= 18 is not met by the input. This is a clean input validation flow."
+							</p>
+						</div>
+					]")
+				else
+					-- Proceed with valid inputs
+					create l_template.make
+					l_template.set_contract_mode (l_contract_mode)
+					
+					l_template.set_variable ("username", l_username)
+					create l_user.make (l_username, l_age, l_is_admin)
+					l_template.set_variable ("user", l_user)
+					l_template.set_variable ("age", l_age)
+					l_template.set_variable ("is_admin", l_is_admin)
+					
+					create l_skills.make (3)
+					l_skills.extend ("Eiffel")
+					l_skills.extend ("HTMX")
+					l_skills.extend ("Glimmer")
+					l_template.set_variable ("skills", l_skills)
+					
+					c.render (l_template, l_tpl_str)
+				end
+			else
+				-- 2. No Input Validation (Direct contract invocation - simulates developer oversight)
+				create l_template.make
+				l_template.set_contract_mode (l_contract_mode)
+				
+				-- If username is not empty, set it (otherwise leave it out to trigger presence check)
+				if l_username /= Void and then not l_username.is_empty then
+					l_template.set_variable ("username", l_username)
+					create l_user.make (l_username, l_age, l_is_admin)
+					l_template.set_variable ("user", l_user)
+				end
+				
+				l_template.set_variable ("age", l_age)
+				l_template.set_variable ("is_admin", l_is_admin)
+				
+				create l_skills.make (3)
+				l_skills.extend ("Eiffel")
+				l_skills.extend ("HTMX")
+				l_skills.extend ("Glimmer")
+				l_template.set_variable ("skills", l_skills)
+				
+				c.render (l_template, l_tpl_str)
+			end
 		end
 
 end
