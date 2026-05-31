@@ -12,11 +12,13 @@ create
 
 feature {NONE} -- Initialization
 
-	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_cache: HASH_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE], STRING_32]; a_max_cache_size: INTEGER)
+	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_filter_registry: GLM_FILTER_REGISTRY; a_helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_cache: HASH_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE], STRING_32]; a_max_cache_size: INTEGER)
 			-- Initialize root context with initial bindings and config
 		do
 			variables := a_variables
 			partials := a_partials
+			filter_registry := a_filter_registry
+			helper_registry := a_helper_registry
 			max_recursion_depth := a_max_recursion_depth
 			auto_escape := a_auto_escape
 			cache := a_cache
@@ -27,6 +29,8 @@ feature {NONE} -- Initialization
 		ensure
 			variables_set: variables = a_variables
 			partials_set: partials = a_partials
+			filter_registry_set: filter_registry = a_filter_registry
+			helper_registry_set: helper_registry = a_helper_registry
 			cache_set: cache = a_cache
 		end
 
@@ -36,6 +40,8 @@ feature {NONE} -- Initialization
 			parent_context := a_parent
 			create variables.make (5)
 			partials := a_parent.partials
+			filter_registry := a_parent.filter_registry
+			helper_registry := a_parent.helper_registry
 			sections := a_parent.sections
 			max_recursion_depth := a_parent.max_recursion_depth
 			current_recursion_depth := a_parent.current_recursion_depth
@@ -53,6 +59,12 @@ feature -- Access
 
 	partials: STRING_TABLE [STRING_32]
 			-- Registered partial templates
+
+	filter_registry: GLM_FILTER_REGISTRY
+			-- Built-in filters registry
+
+	helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]
+			-- Custom helper registry
 
 	sections: STRING_TABLE [STRING_32]
 			-- Rendered sections (stored during section evaluation, retrieved during yield)
@@ -211,7 +223,7 @@ feature -- Expression Evaluation
 			Result := l_expr_node.evaluate (Current)
 		end
 
-feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE} -- Expression Implementation
+feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE, GLM_VARIABLE_NODE} -- Expression Implementation
 
 	find_operator (expression: STRING_32): detachable STRING_32
 			-- Find the first operator in the expression

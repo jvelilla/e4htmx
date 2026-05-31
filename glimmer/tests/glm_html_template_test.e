@@ -1182,6 +1182,76 @@ feature -- Test routines
 			assert ("reflection_attributes", l_result.same_string_general ("5 True my_layout 42 Buy milk 1"))
 		end
 
+	test_builtin_filters
+			-- Test built-in filters (upper, lower, truncate, date_format, number_format, currency)
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+			l_date: DATE
+		do
+			create l_template.make
+			
+			-- Test upper
+			l_template.set_variable ("name", "john")
+			l_result := l_template.render ("{name | upper}")
+			assert ("upper_filter", l_result.same_string_general ("JOHN"))
+			
+			-- Test lower
+			l_template.set_variable ("name", "JOHN")
+			l_result := l_template.render ("{name | lower}")
+			assert ("lower_filter", l_result.same_string_general ("john"))
+			
+			-- Test truncate
+			l_template.set_variable ("text", "hello world")
+			l_result := l_template.render ("{text | truncate: 5}")
+			assert ("truncate_filter", l_result.same_string_general ("hello"))
+			
+			-- Test date_format
+			create l_date.make (2026, 5, 31)
+			l_template.set_variable ("date", l_date)
+			l_result := l_template.render ("{date | date_format: %"dd/MM/yyyy%"}")
+			assert ("date_format_filter", l_result.same_string_general ("31/05/2026"))
+			
+			-- Test number_format
+			l_template.set_variable ("val", 12.3456)
+			l_result := l_template.render ("{val | number_format: 2}")
+			assert ("number_format_filter", l_result.same_string_general ("12.35"))
+			
+			-- Test currency
+			l_template.set_variable ("price", 125.5)
+			l_result := l_template.render ("{price | currency: %"USD%"}")
+			assert ("currency_usd_filter", l_result.same_string_general ("$125.50"))
+			
+			l_result := l_template.render ("{price | currency: %"EUR%"}")
+			assert ("currency_eur_filter", l_result.same_string_general ("€125.50"))
+		end
 
+	test_filter_chaining
+			-- Test chaining multiple filters in sequence
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("name", "John Doe")
+			l_result := l_template.render ("{name | lower | truncate: 4}")
+			assert ("chaining", l_result.same_string_general ("john"))
+		end
+
+	test_custom_helpers
+			-- Test custom helpers registered as named filters
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.register_helper ("gravatar_url", agent (email: ANY): STRING_32
+				do
+					Result := "https://gravatar.com/avatar/" + email.out.to_string_32
+				end)
+			l_template.set_variable ("email", "test@example.com")
+			l_result := l_template.render ("{email | gravatar_url | upper}")
+			assert ("custom_helper", l_result.same_string_general ("HTTPS://GRAVATAR.COM/AVATAR/TEST@EXAMPLE.COM"))
+		end
 
 end

@@ -20,6 +20,9 @@ feature {NONE} -- Initialization
 			create sections.make (5)
 			create trigger_events.make (5)
 			trigger_events.compare_objects
+			create filter_registry.make
+			create helper_registry.make (10)
+			helper_registry.compare_objects
 			recursion_depth := DEFAULT_MAX_RECURSION_DEPTH
 			auto_escape := True
 			last_error := Void
@@ -32,6 +35,12 @@ feature -- Access
 
 	partials: STRING_TABLE [STRING_32]
 			-- Storage for partial templates
+
+	filter_registry: GLM_FILTER_REGISTRY
+			-- Registry of built-in filters
+
+	helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]
+			-- Registry of custom helpers
 
 	recursion_depth: INTEGER
 			-- Current maximum recursion depth
@@ -141,6 +150,17 @@ feature -- Element Change
 			name_not_reserved: not is_reserved_name (name)
 		do
 			set_variable (name, value.to_string_32)
+		end
+
+	register_helper (name: READABLE_STRING_GENERAL; helper: FUNCTION [TUPLE, STRING_32])
+			-- Register a custom helper function as a named filter
+		local
+			l_name: STRING_32
+		do
+			create l_name.make_from_string (name.to_string_32)
+			helper_registry.force (helper, l_name)
+		ensure
+			helper_registered: helper_registry.has (name.to_string_32)
 		end
 
 	register_partial (name: READABLE_STRING_GENERAL; template: READABLE_STRING_GENERAL)
@@ -367,7 +387,7 @@ feature -- Expression Evaluation
 		local
 			l_context: GLM_RENDER_CONTEXT
 		do
-			create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+			create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
 			Result := l_context.evaluate_expression (expression.to_string_32)
 		end
 
@@ -386,7 +406,7 @@ feature -- HTML Safety
 			if has_error then
 				create Result.make_empty
 			else
-				create l_context.make (variables, partials, recursion_depth, False, compiled_templates_cache, max_cache_size)
+				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, False, compiled_templates_cache, max_cache_size)
 				create l_buffer.make (template.count * 8)
 				across l_nodes as node loop
 					node.item.render (l_context, l_buffer)
@@ -410,7 +430,7 @@ feature {NONE} -- Implementation
 			if has_error then
 				create Result.make_empty
 			else
-				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
 				
 				if attached layout as l_layout then
 					-- Layout is present. Render main template into a temporary buffer
@@ -493,7 +513,7 @@ feature {NONE} -- Implementation
 			if has_error then
 				create Result.make_empty
 			elseif l_section /= Void then
-				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
 				create l_buffer.make (128)
 				across l_section.body as node loop
 					node.item.render (l_context, l_buffer)

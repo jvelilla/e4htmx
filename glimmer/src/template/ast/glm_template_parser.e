@@ -39,11 +39,12 @@ feature -- Parsing
 			l_start, l_end_pos: INTEGER
 			l_tag: STRING_32
 			l_text_start: INTEGER
-			l_var_name: STRING_32
 			l_raw: BOOLEAN
 			l_val_end: INTEGER
 			l_text_node: GLM_TEXT_NODE
 			l_var_node: GLM_VARIABLE_NODE
+			l_raw_var_content: STRING_32
+			l_parsed: TUPLE [var_name: STRING_32; filters: ARRAYED_LIST [GLM_FILTER_INVOCATION]]
 		do
 			last_error := Void
 			create Result.make (20)
@@ -101,18 +102,20 @@ feature -- Parsing
 							l_text_start := i
 							i := i + 1
 						else
-							l_var_name := template.substring (i + 1, l_val_end - 1)
-							l_var_name.left_adjust
-							l_var_name.right_adjust
+							l_raw_var_content := template.substring (i + 1, l_val_end - 1)
+							l_raw_var_content.left_adjust
+							l_raw_var_content.right_adjust
 							
-							l_raw := l_var_name.starts_with ("raw:")
+							l_raw := l_raw_var_content.starts_with ("raw:")
 							if l_raw then
-								l_var_name := l_var_name.substring (5, l_var_name.count)
-								l_var_name.left_adjust
-								l_var_name.right_adjust
+								l_raw_var_content := l_raw_var_content.substring (5, l_raw_var_content.count)
+								l_raw_var_content.left_adjust
+								l_raw_var_content.right_adjust
 							end
 							
-							create l_var_node.make (l_var_name, l_raw)
+							l_parsed := parse_placeholder_content (l_raw_var_content)
+							
+							create l_var_node.make (l_parsed.var_name, l_raw, l_parsed.filters)
 							active_list.extend (l_var_node)
 							
 							l_text_start := l_val_end + 1
@@ -133,6 +136,129 @@ feature -- Parsing
 			-- Check for mismatched block tags
 			if not has_error and then not node_stack.is_empty then
 				last_error := "Mismatched block tag: unclosed structure at end of template"
+			end
+		end
+
+feature {NONE} -- Parser Implementation
+
+	parse_placeholder_content (a_content: STRING_32): TUPLE [var_name: STRING_32; filters: ARRAYED_LIST [GLM_FILTER_INVOCATION]]
+			-- Parse the content of a placeholder, returning variable name and its filter chain
+		local
+			l_var_name: STRING_32
+			l_filters: ARRAYED_LIST [GLM_FILTER_INVOCATION]
+			i, n: INTEGER
+			l_char: CHARACTER_32
+			in_double_quotes: BOOLEAN
+			in_single_quotes: BOOLEAN
+			l_current_segment: STRING_32
+			l_segments: ARRAYED_LIST [STRING_32]
+		do
+			create l_segments.make (5)
+			create l_current_segment.make_empty
+			n := a_content.count
+			
+			from
+				i := 1
+			until
+				i > n
+			loop
+				l_char := a_content.item (i)
+				if l_char = '"' and not in_single_quotes then
+					in_double_quotes := not in_double_quotes
+					l_current_segment.append_character (l_char)
+				elseif l_char = '%'' and not in_double_quotes then
+					in_single_quotes := not in_single_quotes
+					l_current_segment.append_character (l_char)
+				elseif l_char = '|' and not in_double_quotes and not in_single_quotes then
+					l_current_segment.left_adjust
+					l_current_segment.right_adjust
+					l_segments.extend (l_current_segment)
+					create l_current_segment.make_empty
+				else
+					l_current_segment.append_character (l_char)
+				end
+				i := i + 1
+			end
+			l_current_segment.left_adjust
+			l_current_segment.right_adjust
+			l_segments.extend (l_current_segment)
+			
+			if not l_segments.is_empty then
+				l_var_name := l_segments.first
+			else
+				create l_var_name.make_empty
+			end
+			
+			create l_filters.make (l_segments.count - 1)
+			from
+				i := 2
+			until
+				i > l_segments.count
+			loop
+				if attached parse_filter_segment (l_segments.i_th (i)) as l_filter then
+					l_filters.extend (l_filter)
+				end
+				i := i + 1
+			end
+			
+			Result := [l_var_name, l_filters]
+		end
+
+	parse_filter_segment (a_segment: STRING_32): detachable GLM_FILTER_INVOCATION
+			-- Parse filter name and arguments from a segment
+		local
+			l_colon_pos: INTEGER
+			l_name: STRING_32
+			l_args_str: STRING_32
+			l_args: ARRAYED_LIST [STRING_32]
+			i, n: INTEGER
+			l_char: CHARACTER_32
+			in_double_quotes, in_single_quotes: BOOLEAN
+			l_current_arg: STRING_32
+		do
+			l_colon_pos := a_segment.index_of (':', 1)
+			if l_colon_pos = 0 then
+				create l_args.make (0)
+				create Result.make (a_segment, l_args)
+			else
+				l_name := a_segment.substring (1, l_colon_pos - 1)
+				l_name.left_adjust
+				l_name.right_adjust
+				
+				l_args_str := a_segment.substring (l_colon_pos + 1, a_segment.count)
+				l_args_str.left_adjust
+				l_args_str.right_adjust
+				
+				create l_args.make (2)
+				create l_current_arg.make_empty
+				n := l_args_str.count
+				from
+					i := 1
+				until
+					i > n
+				loop
+					l_char := l_args_str.item (i)
+					if l_char = '"' and not in_single_quotes then
+						in_double_quotes := not in_double_quotes
+						l_current_arg.append_character (l_char)
+					elseif l_char = '%'' and not in_double_quotes then
+						in_single_quotes := not in_single_quotes
+						l_current_arg.append_character (l_char)
+					elseif l_char = ',' and not in_double_quotes and not in_single_quotes then
+						l_current_arg.left_adjust
+						l_current_arg.right_adjust
+						l_args.extend (l_current_arg)
+						create l_current_arg.make_empty
+					else
+						l_current_arg.append_character (l_char)
+					end
+					i := i + 1
+				end
+				l_current_arg.left_adjust
+				l_current_arg.right_adjust
+				l_args.extend (l_current_arg)
+				
+				create Result.make (l_name, l_args)
 			end
 		end
 
