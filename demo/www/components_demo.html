@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Component Composition - Glimmer Template Engine</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <style>
+    /* Styling for Developer DbC Contract Violations (Hard Errors) */
+    .error {
+      background-color: rgba(239, 68, 68, 0.08) !important;
+      border: 1px solid rgba(239, 68, 68, 0.2) !important;
+      padding: 1.25rem !important;
+      border-radius: var(--radius-md) !important;
+      color: #fca5a5 !important;
+      font-family: var(--font-sans) !important;
+      margin-bottom: 1rem;
+    }
+    .error::before {
+      content: "💥 CRITICAL: Precondition Violation in Component (HTTP 422)";
+      display: block;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #ef4444;
+      margin-bottom: 0.5rem;
+    }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    @media (min-width: 768px) {
+      .concept-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    .concept-card {
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .concept-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.05);
+    }
+
+    .concept-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      font-family: var(--font-display);
+      color: white;
+    }
+
+    .concept-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .playground-columns {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (min-width: 992px) {
+      .playground-columns {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">G</div>
+        <span class="brand-text">Glimmer Engine</span>
+      </a>
+      <nav class="nav-menu">
+        <a href="/" class="nav-link">Dogs CRUD</a>
+        <a href="/filters-demo" class="nav-link">Filters &amp; Helpers</a>
+        <a href="/dbc-demo" class="nav-link">Design by Contract</a>
+        <a href="/components-demo" class="nav-link active">Components</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    <h1 class="gradient-text">Glimmer Templates: Component Composition</h1>
+    <p class="subtitle">Assemble complex, responsive interfaces safely using Glimmer's Parameterized Include system. Leverage scoped child contexts to ensure complete variable isolation and prevent template side effects.</p>
+
+    <!-- Concepts Grid -->
+    <section class="concept-grid">
+      <!-- Scoped Parameters Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #60a5fa;">
+          <span>📦</span> Parameterized Includes
+        </div>
+        <p class="concept-desc">
+          Pass explicit key-value properties into partials using the <code class="code-inline">with</code> syntax. Components receive resolved parent variables or literal parameters mapping directly to their child scope.
+        </p>
+      </article>
+
+      <!-- Variable Isolation Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #34d399;">
+          <span>🔒</span> Scoped Context Isolation
+        </div>
+        <p class="concept-desc">
+          Partials render in an isolated render context. They cannot access parent variables unless they are explicitly passed, preventing variable leakage and making component boundaries clear and modular.
+        </p>
+      </article>
+
+      <!-- Preconditions Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #f472b6;">
+          <span>📜</span> Component Contracts
+        </div>
+        <p class="concept-desc">
+          Place <code class="code-inline">&#123;&#123;require var&#125;&#125;</code> assertions at the top of your components. If a required property is not passed, Glimmer fails fast in development, surfacing the bug immediately.
+        </p>
+      </article>
+    </section>
+
+    <!-- Sandbox Card -->
+    <section class="card" style="margin-bottom: 2rem;">
+      <h2 class="card-title" style="border-bottom: none; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background: linear-gradient(to bottom, var(--primary), var(--accent)); border-radius: 4px; display: inline-block;"></span>
+        Component Composition Playground
+      </h2>
+      <p class="subtitle" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Experiment with component templates and scoping. Modify the templates or input fields to see updates in real-time, or toggle off required variables to trigger contract violations.</p>
+
+      <form 
+        hx-post="/components-demo/render"
+        hx-target="#playground-result"
+        hx-trigger="submit, keyup changed delay:400ms from:input, keyup changed delay:400ms from:textarea, change from:input[type='checkbox']">
+        
+        <div class="playground-grid">
+          <!-- Variables and Configuration -->
+          <div class="btn-secondary" style="border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%;">
+            <h3 style="font-size: 1rem; color: white; margin-bottom: 1.25rem;">1. Bind Parent Variables</h3>
+            
+            <div class="form-group">
+              <label for="user_name">User Name (<code class="code-inline">user_name</code>)</label>
+              <input id="user_name" name="user_name" type="text" value="Javier" placeholder="Username in parent context" />
+            </div>
+
+            <div class="form-group">
+              <label for="user_role">User Role (<code class="code-inline">user_role</code>)</label>
+              <input id="user_role" name="user_role" type="text" value="Architect" placeholder="Role in parent context" />
+            </div>
+
+            <div class="form-group">
+              <label for="company">Company (<code class="code-inline">company</code>)</label>
+              <input id="company" name="company" type="text" value="Eiffel Language Foundation" placeholder="Company in parent context" />
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: flex-start; gap: 0.5rem; margin-top: auto; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-bottom: 0;">
+              <input id="contract_mode" name="contract_mode" type="checkbox" checked style="width: auto; margin-top: 0.25rem;" />
+              <div>
+                <label for="contract_mode" style="margin-bottom: 0; cursor: pointer; color: var(--accent); font-weight: bold;">
+                  Enable Glimmer Contract Mode
+                </label>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem; line-height: 1.4;">
+                  If checked, <code class="code-inline">&#123;&#123;require&#125;&#125;</code> assertions inside the component are evaluated, returning an error view on breach.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Component Template Definition -->
+          <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0;">
+            <label for="component_template" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: white; font-weight: 700;">2. Component Template (<code class="code-inline">components/user_badge.html</code>)</span>
+            </label>
+            <textarea id="component_template" name="component_template" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.85rem; min-height: 180px;" required>&#123;&#123;require name&#125;&#125;
+&#123;&#123;require role&#125;&#125;
+
+&lt;div class="card" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(99, 102, 241, 0.02) 100%); border-color: rgba(99, 102, 241, 0.25); padding: 1.25rem;"&gt;
+  &lt;h4 style="margin: 0; color: white; font-size: 1.1rem;"&gt;&#123;name&#125;&lt;/h4&gt;
+  &lt;span class="badge badge-info" style="margin-top: 0.5rem;"&gt;&#123;role&#125;&lt;/span&gt;
+  
+  &lt;p style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0;"&gt;
+    Company (isolation test): &#123;company&#125;
+  &lt;/p&gt;
+&lt;/div&gt;</textarea>
+          </div>
+        </div>
+
+        <div class="form-group" style="display: flex; flex-direction: column; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+          <label for="playground_template" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span style="color: white; font-weight: 700;">3. Main Template (Calling Page)</span>
+          </label>
+          <textarea id="playground_template" name="playground_template" style="font-family: var(--font-mono); font-size: 0.85rem; min-height: 140px;" required>&lt;h3 style="margin-top: 0; color: white; font-size: 1.2rem;"&gt;Main Page Template&lt;/h3&gt;
+&lt;p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;"&gt;
+  Here we render cards using component composition.
+  Company defined in parent context: &lt;strong&gt;&#123;company&#125;&lt;/strong&gt;
+&lt;/p&gt;
+
+&lt;div class="grid grid-2"&gt;
+  &#123;&#123;include user_badge with name=user_name, role=user_role&#125;&#125;
+  
+  &#123;&#123;include user_badge with name="Alice Smith", role="Lead Developer"&#125;&#125;
+&lt;/div&gt;</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-playground-submit" style="width: 100%;">Render Component composition</button>
+      </form>
+
+      <!-- Terminal Output -->
+      <div style="margin-top: 2rem;">
+        <h3 style="font-size: 1rem; color: white; margin-bottom: 0.75rem;">4. Live Render Output</h3>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">glimmer-component-renderer</span>
+          </div>
+          <div id="playground-result" class="terminal-body" style="background-color: #050b18; min-height: 180px; white-space: pre-wrap; padding: 1.25rem; color: var(--text-primary);">
+            <div style="color: var(--text-secondary); text-align: center; padding-top: 3.5rem;">Modify any input or template above to trigger rendering!</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Syntax Reference -->
+    <section style="margin-bottom: 3rem;">
+      <h2 style="font-size: 1.5rem; color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background-color: var(--primary); border-radius: 4px; display: inline-block;"></span>
+        Component Syntax Reference
+      </h2>
+      
+      <div class="grid grid-3">
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Variables &amp; Constants</h3>
+            <span class="badge badge-info explorer-badge">Include</span>
+          </div>
+          <p class="explorer-desc">Pass string constants (quoted) or parent variables directly into parameters.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">name=user_name</span></div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">role="Lead Developer"</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Supports passing variables, dotted paths, numbers, booleans, and strings.</div>
+          </div>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Scope Isolation</h3>
+            <span class="badge badge-info explorer-badge">Scoping</span>
+          </div>
+          <p class="explorer-desc">Variables in the parent scope are not visible inside components unless explicitly mapped.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Parent Var: <span class="code-inline">company</span></div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Inside Component: <span class="code-inline">&#123;company&#125;</span> &rarr; renders as raw text (empty)</div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Keeps components predictable and reusable across different contexts.</div>
+          </div>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Boundary assertions</h3>
+            <span class="badge badge-warning explorer-badge">Contracts</span>
+          </div>
+          <p class="explorer-desc">Declare required inputs using preconditions at the very top of component files.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Precondition: <span class="code-inline">&#123;&#123;require name&#125;&#125;</span></div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Fails Fast: returns 422 on breach.</div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Ensures type and presence agreements between templates and handlers.</div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>Eiffel Web Framework &amp; Glimmer Template Engine Demo</div>
+  </footer>
+
+  <!-- Intercept 422 error codes for HTMX swapping -->
+  <script>
+    document.body.addEventListener('htmx:beforeOnLoad', function(evt) {
+      if (evt.detail.xhr.status === 422) {
+        evt.detail.shouldSwap = true;
+        evt.detail.isError = false;
+      }
+    });
+  </script>
+</body>
+
+</html>

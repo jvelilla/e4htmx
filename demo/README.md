@@ -15,6 +15,8 @@ This project demonstrates the integration of the [Eiffel Web Framework (EWF)](ht
 │   ├── index.html             # Basic fallback HTML file
 │   ├── index2.html            # Redesigned Dogs CRUD frontend
 │   ├── filters_demo.html      # Educational filters & helpers template
+│   ├── dbc_demo.html          # Design by Contract playground
+│   ├── components_demo.html   # Component composition sandbox
 │   └── styles.css             # Premium dark-theme stylesheet
 └── htmx_demo.ecf              # Eiffel configuration file (targets & libraries)
 ```
@@ -26,7 +28,8 @@ This application demonstrates how to:
 - Serve dynamic content and HTML templates utilizing Glimmer.
 - Use HTMX attributes for real-time frontend updates (CRUD + inline deletions) without writing custom JavaScript.
 - Apply Glimmer's **built-in filters** and **custom Eiffel agents** as template formatting helper pipelines.
-- Build an interactive, live-reloading playground that parses and renders Glimmer templates on-the-fly.
+- Support **Component Model (Composition)** with parameterized includes, variable scope isolation, and DbC preconditions.
+- Build interactive, live-reloading playgrounds that parse and render Glimmer templates on-the-fly.
 
 ---
 
@@ -52,6 +55,15 @@ The application serves two main interactive routes:
   - `status_badge`: Converts raw text statuses into color-coded HTML status pills (`{raw:status | status_badge}`).
   - `slugify`: Converts titles to URL-safe hyphenated slugs (`{app_title | slugify}`).
 - **Interactive Live Playground**: An inline form where you can edit variables and write a custom Glimmer template. As you type, HTMX triggers a POST request to `/filters-demo/render` which renders the template dynamically and displays the result inside a terminal container.
+
+### 3. Design by Contract Sandbox (`/dbc-demo`)
+- Experiment with preconditions (`{{require}}`) and inline inspection (`{dump}`, `{dump_context}`).
+- Verify development (fails-fast with 422 on breach) vs. production lifecycle modes.
+
+### 4. Component Composition Playground (`/components-demo`)
+- **Isolated Context**: Try out parameterized includes (`{{include component with param=val}}`) and witness that parent context variables do not leak into the component.
+- **Dynamic Sandboxing**: Edit both the sub-component template and the calling page template in real-time.
+- **DbC boundaries**: Toggle required component inputs to trigger fast-failing preconditions.
 
 ---
 
@@ -86,6 +98,8 @@ The application serves two main interactive routes:
 4. Access the application at:
    - Dashboard: [http://localhost:9999/](http://localhost:9999/)
    - Filters Showcase: [http://localhost:9999/filters-demo](http://localhost:9999/filters-demo)
+   - DbC Playground: [http://localhost:9999/dbc-demo](http://localhost:9999/dbc-demo)
+   - Components Playground: [http://localhost:9999/components-demo](http://localhost:9999/components-demo)
 
 ## Technical Integration
 

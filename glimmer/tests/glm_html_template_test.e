@@ -1254,4 +1254,68 @@ feature -- Test routines
 			assert ("custom_helper", l_result.same_string_general ("HTTPS://GRAVATAR.COM/AVATAR/TEST@EXAMPLE.COM"))
 		end
 
+	test_parameterized_include_basic
+			-- Test basic parameterized include functionality
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("user_card", "<div>Name: {name}, Role: {role}</div>")
+			l_template.set_variable ("user_name", "Javier")
+			l_template.set_variable ("user_role", "Architect")
+			
+			l_result := l_template.render ("{{include user_card with name=user_name, role=user_role}}")
+			assert ("basic_param_include", l_result.same_string ("<div>Name: Javier, Role: Architect</div>"))
+		end
+
+	test_parameterized_include_isolation
+			-- Test that parent context variables are NOT leaked to parameterized includes
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("isolated_card", "<div>Name: {name}, ParentVar: {parent_var}</div>")
+			l_template.set_variable ("name", "Local")
+			l_template.set_variable ("parent_var", "Leak")
+			
+			l_result := l_template.render ("{{include isolated_card with name=name}}")
+			assert ("isolated_param_include", l_result.same_string ("<div>Name: Local, ParentVar: {parent_var}</div>"))
+		end
+
+	test_parameterized_include_expression_resolution
+			-- Test that parameters can be resolved from dotted paths and literals
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_user: STRING_TABLE [ANY]
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("expr_partial", "{id}: {name} ({count})")
+			
+			create l_user.make (2)
+			l_user.force (42, "id")
+			l_user.force ("Alice", "name")
+			l_template.set_variable ("user", l_user)
+			l_template.set_variable ("limit", 10)
+			
+			l_result := l_template.render ("{{include expr_partial with id=user.id, name=user.name, count=limit}}")
+			assert ("expression_param_include", l_result.same_string ("42: Alice (10)"))
+		end
+
+	test_parameterized_include_with_commas
+			-- Test that parameter values with quoted strings containing commas are parsed correctly
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("greeting_card", "Message: {msg}, From: {from}")
+			l_template.set_variable ("author", "Bob")
+			
+			l_result := l_template.render ("{{include greeting_card with msg=%"Hello, world!%", from=author}}")
+			assert ("commas_in_quotes_include", l_result.same_string ("Message: Hello, world!, From: Bob"))
+		end
+
 end

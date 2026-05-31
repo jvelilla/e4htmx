@@ -27,6 +27,7 @@ feature {NONE} -- Initialization
 			contract_mode := a_contract_mode
 			create sections.make (5)
 			last_error := Void
+			is_isolated := False
 		ensure
 			variables_set: variables = a_variables
 			partials_set: partials = a_partials
@@ -51,6 +52,7 @@ feature {NONE} -- Initialization
 			cache := a_parent.cache
 			max_cache_size := a_parent.max_cache_size
 			contract_mode := a_parent.contract_mode
+			is_isolated := False
 		ensure
 			parent_set: parent_context = a_parent
 			contract_mode_inherited: contract_mode = a_parent.contract_mode
@@ -97,6 +99,9 @@ feature -- Access
 	contract_mode: BOOLEAN
 			-- Is contract mode enabled?
 
+	is_isolated: BOOLEAN
+			-- Is this context isolated from parent variable lookups?
+
 	parent_context: detachable GLM_RENDER_CONTEXT
 			-- Parent scope context if nested
 
@@ -107,7 +112,7 @@ feature -- Access
 				Result := resolve_dotted_path (a_key)
 			elseif variables.has (a_key) then
 				Result := variables.item (a_key)
-			elseif attached parent_context as parent then
+			elseif not is_isolated and then attached parent_context as parent then
 				Result := parent.item (a_key)
 			end
 		end
@@ -118,7 +123,7 @@ feature -- Access
 			if a_key.to_string_32.has ('.') then
 				Result := resolve_dotted_path (a_key) /= Void
 			else
-				Result := variables.has (a_key) or else (attached parent_context as parent and then parent.has (a_key))
+				Result := variables.has (a_key) or else (not is_isolated and then attached parent_context as parent and then parent.has (a_key))
 			end
 		end
 
@@ -145,6 +150,28 @@ feature -- Scoped Context
 			Result.set_current_recursion_depth (current_recursion_depth + 1)
 		ensure
 			depth_incremented: Result.current_recursion_depth = current_recursion_depth + 1
+		end
+
+	make_child_with (a_params: STRING_TABLE [ANY]): GLM_RENDER_CONTEXT
+			-- Create an isolated child context with initial variables `a_params` and incremented recursion depth
+		do
+			create Result.make_sub (Current)
+			Result.set_is_isolated (True)
+			Result.set_current_recursion_depth (current_recursion_depth + 1)
+			across a_params as param_cursor loop
+				Result.variables.force (param_cursor.item, param_cursor.key)
+			end
+		ensure
+			depth_incremented: Result.current_recursion_depth = current_recursion_depth + 1
+			is_isolated: Result.is_isolated
+		end
+
+	set_is_isolated (a_val: BOOLEAN)
+			-- Set `is_isolated` status
+		do
+			is_isolated := a_val
+		ensure
+			is_isolated_set: is_isolated = a_val
 		end
 
 feature {GLM_RENDER_CONTEXT} -- Implementation
@@ -230,6 +257,26 @@ feature -- Operations and Parsing
 			end
 		end
 
+	render_partial_with (template_str: STRING_32; a_name: STRING_32; a_params: STRING_TABLE [STRING_32]; a_buffer: STRING_32)
+			-- Compile and render partial template with parameters in an isolated child context directly into `a_buffer`
+		local
+			l_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			l_sub_context: GLM_RENDER_CONTEXT
+			l_resolved_vars: STRING_TABLE [ANY]
+		do
+			l_nodes := get_compiled_template_with_name (template_str, a_name)
+			if not has_error then
+				create l_resolved_vars.make (a_params.count)
+				across a_params as param_cursor loop
+					l_resolved_vars.force (resolve_value (param_cursor.item), param_cursor.key)
+				end
+				l_sub_context := make_child_with (l_resolved_vars)
+				across l_nodes as node loop
+					node.item.render (l_sub_context, a_buffer)
+				end
+			end
+		end
+
 feature -- Expression Evaluation
 
 	evaluate_expression (expression: STRING_32): BOOLEAN
@@ -275,7 +322,9 @@ feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE, GLM_VARIABL
 			l_str.left_adjust
 			l_str.right_adjust
 
-			if l_str.is_integer_8 then
+			if l_str.count >= 2 and then ((l_str.starts_with ("%"") and l_str.ends_with ("%"")) or else (l_str.starts_with ("'") and l_str.ends_with ("'"))) then
+				Result := l_str.substring (2, l_str.count - 1)
+			elseif l_str.is_integer_8 then
 				Result := l_str.to_integer_8
 			elseif l_str.is_integer_16 then
 				Result := l_str.to_integer_16

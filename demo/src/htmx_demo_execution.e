@@ -79,6 +79,8 @@ feature -- Router
 			map_uri_agent ("/filters-demo/render", agent handle_filters_playground_render, router.methods_POST)
 			map_uri_agent ("/dbc-demo", agent handle_dbc_demo, router.methods_GET)
 			map_uri_agent ("/dbc-demo/render", agent handle_dbc_playground_render, router.methods_POST)
+			map_uri_agent ("/components-demo", agent handle_components_demo, router.methods_GET)
+			map_uri_agent ("/components-demo/render", agent handle_components_playground_render, router.methods_POST)
 
 			create www.make_with_path (document_root)
 			www.set_directory_index (<<"index2.html">>)
@@ -897,6 +899,96 @@ feature -- Template Helpers
 				
 				c.render (l_template, l_tpl_str)
 			end
+		end
+
+	handle_components_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer components and playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Enable contract mode by default for playground showcase
+			l_template.set_contract_mode (True)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Component Composition Playground")
+			l_template.set_variable ("user_name", "Javier")
+			l_template.set_variable ("user_role", "Architect")
+			l_template.set_variable ("company", "Eiffel Language Foundation")
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("components_demo.html").name)
+		end
+
+	handle_components_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from components playground to render template with custom component
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_user_name: detachable STRING_32
+			l_user_role: detachable STRING_32
+			l_company: detachable STRING_32
+			l_contract_mode: BOOLEAN
+			l_tpl_str: STRING_32
+			l_comp_tpl_str: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_user_name := c.form_value ("user_name")
+			if l_user_name /= Void then
+				l_user_name.left_adjust
+				l_user_name.right_adjust
+			end
+			
+			l_user_role := c.form_value ("user_role")
+			if l_user_role /= Void then
+				l_user_role.left_adjust
+				l_user_role.right_adjust
+			end
+			
+			l_company := c.form_value ("company")
+			if l_company /= Void then
+				l_company.left_adjust
+				l_company.right_adjust
+			end
+			
+			l_contract_mode := c.form_value ("contract_mode") /= Void
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := ""
+			end
+			
+			if attached c.form_value ("component_template") as comp_tpl then
+				l_comp_tpl_str := comp_tpl
+			else
+				l_comp_tpl_str := ""
+			end
+			
+			create l_template.make
+			l_template.set_contract_mode (l_contract_mode)
+			
+			-- Register the user's component template as a partial
+			l_template.register_partial ("user_badge", l_comp_tpl_str)
+			
+			-- Bind variables
+			if l_user_name /= Void and then not l_user_name.is_empty then
+				l_template.set_variable ("user_name", l_user_name)
+			end
+			if l_user_role /= Void and then not l_user_role.is_empty then
+				l_template.set_variable ("user_role", l_user_role)
+			end
+			if l_company /= Void and then not l_company.is_empty then
+				l_template.set_variable ("company", l_company)
+			end
+			
+			-- Render template
+			c.render (l_template, l_tpl_str)
 		end
 
 end

@@ -421,7 +421,20 @@ feature {NONE} -- Tag Processing
 				l_inc_name.left_adjust
 				l_inc_name.right_adjust
 				
-				create l_inc_node.make (l_inc_name)
+				i := l_inc_name.substring_index (" with ", 1)
+				if i > 0 then
+					l_cond := l_inc_name.substring (1, i - 1)
+					l_cond.left_adjust
+					l_cond.right_adjust
+					
+					l_req_content := l_inc_name.substring (i + 6, l_inc_name.count)
+					l_req_content.left_adjust
+					l_req_content.right_adjust
+					
+					create l_inc_node.make_with_parameters (l_cond, parse_include_parameters (l_req_content))
+				else
+					create l_inc_node.make (l_inc_name)
+				end
 				active_list.extend (l_inc_node)
 				
 			elseif a_tag.starts_with ("require ") then
@@ -461,6 +474,70 @@ feature {NONE} -- Tag Processing
 				
 			else
 				last_error := "Unknown block tag: " + a_tag
+			end
+		end
+
+	parse_include_parameters (a_params_str: STRING_32): STRING_TABLE [STRING_32]
+			-- Parse parameter key-value pairs (e.g. "key1=val1, key2=val2")
+		local
+			i_idx, n_len: INTEGER
+			l_char: CHARACTER_32
+			in_double_quotes, in_single_quotes: BOOLEAN
+			l_pair: STRING_32
+			l_pairs: ARRAYED_LIST [STRING_32]
+			l_eq_pos: INTEGER
+			l_key, l_val: STRING_32
+		do
+			create Result.make (5)
+			create l_pairs.make (5)
+			create l_pair.make_empty
+			n_len := a_params_str.count
+			
+			from
+				i_idx := 1
+			until
+				i_idx > n_len
+			loop
+				l_char := a_params_str.item (i_idx)
+				if l_char = '"' and not in_single_quotes then
+					in_double_quotes := not in_double_quotes
+					l_pair.append_character (l_char)
+				elseif l_char = '%'' and not in_double_quotes then
+					in_single_quotes := not in_single_quotes
+					l_pair.append_character (l_char)
+				elseif l_char = ',' and not in_double_quotes and not in_single_quotes then
+					l_pair.left_adjust
+					l_pair.right_adjust
+					if not l_pair.is_empty then
+						l_pairs.extend (l_pair)
+					end
+					create l_pair.make_empty
+				else
+					l_pair.append_character (l_char)
+				end
+				i_idx := i_idx + 1
+			end
+			l_pair.left_adjust
+			l_pair.right_adjust
+			if not l_pair.is_empty then
+				l_pairs.extend (l_pair)
+			end
+			
+			across l_pairs as pair loop
+				l_eq_pos := pair.item.index_of ('=', 1)
+				if l_eq_pos > 1 then
+					l_key := pair.item.substring (1, l_eq_pos - 1)
+					l_key.left_adjust
+					l_key.right_adjust
+					
+					l_val := pair.item.substring (l_eq_pos + 1, pair.item.count)
+					l_val.left_adjust
+					l_val.right_adjust
+					
+					if not l_key.is_empty then
+						Result.force (l_val, l_key)
+					end
+				end
 			end
 		end
 
