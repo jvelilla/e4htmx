@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Filters &amp; Helpers - Glimmer Template Engine</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+</head>
+
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">G</div>
+        <span class="brand-text">Glimmer Engine</span>
+      </a>
+      <nav class="nav-menu">
+        <a href="/" class="nav-link">Dogs CRUD</a>
+        <a href="/filters-demo" class="nav-link active">Filters &amp; Helpers</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    <h1 class="gradient-text">Glimmer Templates: Filters &amp; Helpers</h1>
+    <p class="subtitle">Welcome to the interactive showcase for Glimmer's variable transformation pipeline. Learn how to format data in your views using built-in filters, chained operations, and custom Eiffel agents.</p>
+
+    <!-- Built-in Filters Showcase Section -->
+    <section style="margin-bottom: 3rem;">
+      <h2 style="font-size: 1.5rem; color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background-color: var(--primary); border-radius: 4px; display: inline-block;"></span>
+        Built-in Filters (Phase 1.1)
+      </h2>
+      
+      <div class="grid grid-3">
+        <!-- Card 1: Text Case -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Text Case</h3>
+            <span class="badge badge-info explorer-badge">Built-in</span>
+          </div>
+          <p class="explorer-desc">Transforms strings to uppercase or lowercase directly in the template.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{name | upper}</span></div>
+            <div class="explorer-result">
+              <span>{user_name}</span> &rarr; <strong style="color: white;">{user_name | upper}</strong>
+            </div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">{name | lower}</span></div>
+            <div class="explorer-result">
+              <span>{user_name}</span> &rarr; <strong style="color: white;">{user_name | lower}</strong>
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 2: Truncate -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Text Truncating</h3>
+            <span class="badge badge-info explorer-badge">Built-in</span>
+          </div>
+          <p class="explorer-desc">Shortens strings to a maximum length without breaking words, followed by an optional arg.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{description | truncate: 45}</span></div>
+            <div class="explorer-result" style="font-size: 0.85rem;">
+              {description | truncate: 45}
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 3: Date Format -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Date &amp; Time</h3>
+            <span class="badge badge-info explorer-badge">Built-in</span>
+          </div>
+          <p class="explorer-desc">Formats Date, DateTime, or epoch timestamps using format string tokens.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{date | date_format: "dd/MM/yyyy"}</span></div>
+            <div class="explorer-result">
+              <span style="font-size: 0.75rem; color: var(--text-muted);">{raw:created_at_raw}</span> &rarr; <strong style="color: white;">{created_at | date_format: "dd/MM/yyyy"}</strong>
+            </div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">date_format: "yyyy-MM-dd HH:mm"</span></div>
+            <div class="explorer-result" style="font-size: 0.8rem;">
+              <strong style="color: white;">{created_at | date_format: "yyyy-MM-dd HH:mm"}</strong>
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 4: Numbers -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Decimals</h3>
+            <span class="badge badge-info explorer-badge">Built-in</span>
+          </div>
+          <p class="explorer-desc">Formats numeric variables to a fixed number of decimal places with rounding.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{score | number_format: 2}</span></div>
+            <div class="explorer-result">
+              <span>{score}</span> &rarr; <strong style="color: white;">{score | number_format: 2}</strong>
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 5: Currency -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Currency Formatter</h3>
+            <span class="badge badge-info explorer-badge">Built-in</span>
+          </div>
+          <p class="explorer-desc">Renders float or integer values with ISO currency symbols prefix or suffix.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{balance | currency: "USD"}</span></div>
+            <div class="explorer-result">
+              <strong style="color: white;">{balance | currency: "USD"}</strong>
+            </div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">{balance | currency: "EUR"}</span></div>
+            <div class="explorer-result">
+              <strong style="color: white;">{balance | currency: "EUR"}</strong>
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 6: Chaining Filters -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Filter Chaining</h3>
+            <span class="badge badge-success explorer-badge">Combined</span>
+          </div>
+          <p class="explorer-desc">Sequence transformations together. Output flows from left to right through the pipeline.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{name | lower | truncate: 4}</span></div>
+            <div class="explorer-result">
+              <span>"John Doe"</span> &rarr; <strong style="color: white;">{user_name | lower | truncate: 4}</strong>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Custom Helpers Section -->
+    <section style="margin-bottom: 3rem;">
+      <h2 style="font-size: 1.5rem; color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background-color: var(--accent); border-radius: 4px; display: inline-block;"></span>
+        Custom Eiffel Helpers (Phase 1.3)
+      </h2>
+      
+      <div class="grid grid-3">
+        <!-- Helper 1: Avatar Generator -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Robot Avatar</h3>
+            <span class="badge badge-warning explorer-badge">Eiffel Agent</span>
+          </div>
+          <p class="explorer-desc">Calls an Eiffel agent function mapping the email to a Dicebear robot SVG URL.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&lt;img src="{email | gravatar_url}" /&gt;</span></div>
+            <div class="explorer-result" style="justify-content: space-between;">
+              <span style="font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">{email}</span>
+              <img src="{email | gravatar_url}" class="avatar" alt="Dicebear Robot" />
+            </div>
+          </div>
+        </article>
+
+        <!-- Helper 2: Status Badges -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>HTML Status Badge</h3>
+            <span class="badge badge-warning explorer-badge">Eiffel Agent</span>
+          </div>
+          <p class="explorer-desc">Converts raw strings into beautifully styled status pill HTML components (using raw rendering).</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{raw:status | status_badge}</span></div>
+            <div class="explorer-result">
+              <span>"{status}"</span> &rarr; {raw:status | status_badge}
+            </div>
+          </div>
+        </article>
+
+        <!-- Helper 3: Slugify -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Slugify Text</h3>
+            <span class="badge badge-warning explorer-badge">Eiffel Agent</span>
+          </div>
+          <p class="explorer-desc">Converts regular titles and sentences into URL-friendly lowercase-hyphenated slugs.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">{text | slugify}</span></div>
+            <div class="explorer-result" style="font-size: 0.85rem;">
+              <span>"My Page"</span> &rarr; <strong style="color: white;">{app_title | slugify}</strong>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Interactive Live Playground Section -->
+    <section class="card" style="margin-bottom: 2rem;">
+      <h2 class="card-title" style="border-bottom: none; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background: linear-gradient(to bottom, var(--primary), var(--accent)); border-radius: 4px; display: inline-block;"></span>
+        Interactive Live Glimmer Playground
+      </h2>
+      <p class="subtitle" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Test the template parser and formatting engine in real-time. Modify the bound variables and write your custom Glimmer template placeholders below to render them dynamically.</p>
+
+      <form 
+        hx-post="/filters-demo/render"
+        hx-target="#playground-result"
+        hx-trigger="submit, keyup changed delay:400ms from:input, keyup changed delay:400ms from:textarea">
+        
+        <div class="playground-grid">
+          <!-- Bound Variables Configuration -->
+          <div class="btn-secondary" style="border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
+            <h3 style="font-size: 1rem; color: white; margin-bottom: 1rem;">1. Bind Playground Variables</h3>
+            
+            <div class="form-group">
+              <label for="val_text">Text Value (<code class="code-inline">{val_text}</code>)</label>
+              <input id="val_text" name="val_text" type="text" value="Eiffel Web Framework rules" />
+            </div>
+
+            <div class="grid grid-2" style="gap: 1rem; margin-bottom: 0;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="val_price">Price Value (<code class="code-inline">{val_price}</code>)</label>
+                <input id="val_price" name="val_price" type="number" step="0.01" value="489.95" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="val_email">Email Value (<code class="code-inline">{val_email}</code>)</label>
+                <input id="val_email" name="val_email" type="email" value="javier@eiffel.org" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Template Code Input & Render Output -->
+          <div style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column; margin-bottom: 1rem;">
+              <label for="playground_template" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>2. Write Custom Glimmer Template</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Triggers render as you type!</span>
+              </label>
+              <textarea id="playground_template" name="playground_template" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.875rem;" required>Hello {val_text | upper}! 
+Your total is {val_price | currency: "USD"} (or {val_price | currency: "EUR"}).
+Slug: {val_text | slugify}
+Robot: {val_email | gravatar_url}</textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-playground-submit" style="width: 100%;">Force Render Template</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Rendered Results View -->
+      <div style="margin-top: 2rem;">
+        <h3 style="font-size: 1rem; color: white; margin-bottom: 0.75rem;">3. Rendered Output</h3>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">glimmer-render-context</span>
+          </div>
+          <div id="playground-result" class="terminal-body" style="background-color: #050b18; min-height: 120px; white-space: pre-wrap;">
+            <!-- Rendered output will display here via HTMX -->
+            <div style="color: var(--text-secondary); text-align: center; padding-top: 2rem;">Type in the inputs above to trigger rendering!</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>Eiffel Web Framework &amp; Glimmer Template Engine Demo</div>
+  </footer>
+</body>
+
+</html>

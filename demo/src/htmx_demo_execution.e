@@ -75,6 +75,8 @@ feature -- Router
 			map_uri_agent ("/event-with-string", agent handle_event_with_string, router.methods_GET)
 			map_uri_agent ("/event-with-object", agent handle_event_with_object, router.methods_GET)
 			map_uri_agent ("/trigger", agent handle_trigger, router.methods_GET)
+			map_uri_agent ("/filters-demo", agent handle_filters_demo, router.methods_GET)
+			map_uri_agent ("/filters-demo/render", agent handle_filters_playground_render, router.methods_POST)
 
 			create www.make_with_path (document_root)
 			www.set_directory_index (<<"index2.html">>)
@@ -574,6 +576,177 @@ feature -- HTML Generation
 				</body>
 				</html>
 			]").to_string_8
+		end
+
+feature -- Glimmer Filters Demo Event Handlers
+
+	handle_filters_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer filters and helpers showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_date: DATE
+			l_datetime: DATE_TIME
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Register custom helper agents
+			l_template.register_helper ("gravatar_url", agent gravatar_url)
+			l_template.register_helper ("status_badge", agent status_badge)
+			l_template.register_helper ("slugify", agent slugify)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Filters & Helpers Showcase")
+			l_template.set_variable ("user_name", "Javier")
+			l_template.set_variable ("email", "javier@eiffel.org")
+			l_template.set_variable ("balance", 12500.75)
+			
+			create l_date.make (2026, 5, 31)
+			create l_datetime.make (2026, 5, 31, 12, 30, 0)
+			l_template.set_variable ("created_at", l_datetime)
+			l_template.set_variable ("created_at_raw", l_datetime.out.to_string_32)
+			l_template.set_variable ("score", 94.5678)
+			l_template.set_variable ("status", "active")
+			l_template.set_variable ("description", "The Glimmer template engine is now equipped with powerful built-in formatting filters and agent-based custom helpers. Try them out!")
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("filters_demo.html").name)
+		end
+
+	handle_filters_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from playground form to dynamically compile and render template
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_text: STRING_32
+			l_price: REAL_64
+			l_email: STRING_32
+			l_tpl_str: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			if attached c.form_value ("val_text") as t then
+				l_text := t
+			else
+				l_text := "Eiffel Web Framework rules"
+			end
+			
+			if attached c.form_value ("val_price") as p and then p.is_double then
+				l_price := p.to_double
+			else
+				l_price := 489.95
+			end
+			
+			if attached c.form_value ("val_email") as e then
+				l_email := e
+			else
+				l_email := "javier@eiffel.org"
+			end
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := "Hello {val_text | upper}! Price: {val_price | currency: %"USD%"}"
+			end
+			
+			create l_template.make
+			
+			-- Register custom helper agents
+			l_template.register_helper ("gravatar_url", agent gravatar_url)
+			l_template.register_helper ("status_badge", agent status_badge)
+			l_template.register_helper ("slugify", agent slugify)
+			
+			-- Set template variables
+			l_template.set_variable ("val_text", l_text)
+			l_template.set_variable ("val_price", l_price)
+			l_template.set_variable ("val_email", l_email)
+			
+			-- Render playground content
+			c.render (l_template, l_tpl_str)
+		end
+
+feature -- Template Helpers
+
+	gravatar_url (a_val: detachable ANY): STRING_32
+			-- Generate a Dicebear robot avatar SVG URL based on input email `a_val`
+		local
+			l_email: STRING_32
+		do
+			if attached a_val as v then
+				l_email := v.out.to_string_32
+				l_email.left_adjust
+				l_email.right_adjust
+				Result := "https://api.dicebear.com/7.x/bottts/svg?seed=" + l_email
+			else
+				Result := "https://api.dicebear.com/7.x/bottts/svg?seed=default"
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	status_badge (a_val: detachable ANY): STRING_32
+			-- Convert a status string `a_val` into a styled HTML badge span
+		local
+			l_status: STRING_32
+		do
+			if attached a_val as v then
+				l_status := v.out.to_string_32
+				l_status.left_adjust
+				l_status.right_adjust
+				l_status.to_lower
+				
+				if l_status.same_string ("active") or l_status.same_string ("completed") or l_status.same_string ("success") then
+					Result := "<span class=%"badge badge-success%">" + l_status + "</span>"
+				elseif l_status.same_string ("pending") or l_status.same_string ("warning") then
+					Result := "<span class=%"badge badge-warning%">" + l_status + "</span>"
+				elseif l_status.same_string ("inactive") or l_status.same_string ("failed") or l_status.same_string ("error") then
+					Result := "<span class=%"badge badge-danger%">" + l_status + "</span>"
+				else
+					Result := "<span class=%"badge badge-info%">" + l_status + "</span>"
+				end
+			else
+				Result := "<span class=%"badge badge-muted%">unknown</span>"
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	slugify (a_val: detachable ANY): STRING_32
+			-- Convert text `a_val` into a URL-friendly lowercase-hyphenated slug
+		local
+			l_str: STRING_32
+			i: INTEGER
+			c: CHARACTER_32
+		do
+			if attached a_val as v then
+				l_str := v.out.to_string_32
+				l_str.left_adjust
+				l_str.right_adjust
+				l_str.to_lower
+				
+				create Result.make (l_str.count)
+				from
+					i := 1
+				until
+					i > l_str.count
+				loop
+					c := l_str.item (i)
+					if c.is_alpha_numeric then
+						Result.append_character (c)
+					elseif c = ' ' or c = '-' or c = '_' then
+						if not Result.is_empty and then Result.item (Result.count) /= '-' then
+							Result.append_character ('-')
+						end
+					end
+					i := i + 1
+				end
+			else
+				create Result.make_empty
+			end
+		ensure
+			result_attached: Result /= Void
 		end
 
 end
