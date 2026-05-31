@@ -2,14 +2,14 @@ note
 	description: "Application launcher service for active search"
 
 class
-	HTMX_ACTIVE_SEARCH
+	HTMX_OPTIMISTIC_UPDATES
 
 inherit
 	WSF_LAUNCHABLE_SERVICE
 		redefine
 			initialize
 		end
-	APPLICATION_LAUNCHER [HTMX_ACTIVE_SEARCH_EXECUTION]
+	APPLICATION_LAUNCHER [HTMX_OPTIMISTIC_UPDATES_EXECUTION]
 
 create
 	make_and_launch
@@ -17,10 +17,10 @@ create
 feature {NONE} -- Initialization
 
 	initialize
-			-- Initialize service on port 9091
+			-- Initialize service on port 9097
 		do
 			Precursor
-			set_service_option ("port", 9090)
+			set_service_option ("port", 9097)
 			set_service_option ("verbose", "yes")
 		end
 

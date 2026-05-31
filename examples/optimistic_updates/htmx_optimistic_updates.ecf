@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd" name="htmx_active_search" uuid="92D0B593-043A-47F9-AA46-73687A3FE7F2">
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd" name="htmx_optimistic_updates" uuid="92D0B593-043A-47F9-AA46-73687A3FE7F9">
 	<target name="common" abstract="true">
 		<file_rule>
 			<exclude>/CVS$</exclude>
@@ -14,6 +14,7 @@
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf">
 			<option warning="none"/>
 		</library>
+		<library name="base_extension" location="$ISE_LIBRARY\library\base_extension\base_extension.ecf"/>
 		<library name="http" location="$ISE_LIBRARY\contrib\library\network\protocol\http\http.ecf">
 			<option warning="none"/>
 		</library>
@@ -23,10 +24,11 @@
 		<library name="json" location="$ISE_LIBRARY\contrib\library\text\parser\json\library\json.ecf" readonly="false"/>
 		<library name="glimmer" location="..\..\glimmer\glimmer.ecf" readonly="true"/>
 		<library name="ewf_glimmer" location="..\..\ewf_glimmer\ewf_glimmer.ecf" readonly="false"/>
+		<library name="sqlite" location="$ISE_LIBRARY\unstable\library\persistency\database\sqlite3\sqlite.ecf" readonly="false"/>
 	</target>
 
-	<target name="htmx_active_search_any" extends="common">
-		<root class="HTMX_ACTIVE_SEARCH" feature="make_and_launch"/>
+	<target name="htmx_optimistic_updates_any" extends="common">
+		<root class="HTMX_OPTIMISTIC_UPDATES" feature="make_and_launch"/>
 		<option warning="none" is_obsolete_iteration="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>
@@ -44,13 +46,13 @@
 		</cluster>
 		<cluster name="src" location=".\src\" recursive="true">
 			<option warning="none" is_obsolete_iteration="true"/>
-			<class_option class="HTMX_ACTIVE_SEARCH" warning="none" is_obsolete_iteration="true"/>
-			<class_option class="HTMX_ACTIVE_SEARCH_EXECUTION" warning="none" is_obsolete_iteration="true"/>
+			<class_option class="HTMX_OPTIMISTIC_UPDATES" warning="none" is_obsolete_iteration="true"/>
+			<class_option class="HTMX_OPTIMISTIC_UPDATES_EXECUTION" warning="none" is_obsolete_iteration="true"/>
 		</cluster>
 	</target>
 	
-	<target name="htmx_active_search_standalone" extends="common">
-		<root class="HTMX_ACTIVE_SEARCH" feature="make_and_launch"/>
+	<target name="htmx_optimistic_updates_standalone" extends="common">
+		<root class="HTMX_OPTIMISTIC_UPDATES" feature="make_and_launch"/>
 		<option warning="none" is_obsolete_iteration="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>
@@ -69,8 +71,8 @@
 		</cluster>
 	</target>
 	
-	<target name="htmx_active_search_libfcgi" extends="common">
-		<root class="HTMX_ACTIVE_SEARCH" feature="make_and_launch"/>
+	<target name="htmx_optimistic_updates_libfcgi" extends="common">
+		<root class="HTMX_OPTIMISTIC_UPDATES" feature="make_and_launch"/>
 		<option warning="none" is_obsolete_iteration="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>
@@ -91,7 +93,7 @@
 		</cluster>
 	</target>
 	
-	<target name="htmx_active_search" extends="htmx_active_search_any">
+	<target name="htmx_optimistic_updates" extends="htmx_optimistic_updates_any">
 		<option warning="none" is_obsolete_iteration="true"/>
 		<setting name="total_order_on_reals" value="false"/>
 		<setting name="dead_code_removal" value="feature"/>

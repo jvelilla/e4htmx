@@ -1,15 +1,15 @@
 note
-	description: "Application launcher service for active search"
+	description: "Application service launcher for pagination example"
 
 class
-	HTMX_ACTIVE_SEARCH
+	HTMX_PAGINATION
 
 inherit
 	WSF_LAUNCHABLE_SERVICE
 		redefine
 			initialize
 		end
-	APPLICATION_LAUNCHER [HTMX_ACTIVE_SEARCH_EXECUTION]
+	APPLICATION_LAUNCHER [HTMX_PAGINATION_EXECUTION]
 
 create
 	make_and_launch
@@ -17,7 +17,7 @@ create
 feature {NONE} -- Initialization
 
 	initialize
-			-- Initialize service on port 9091
+			-- Initialize current service.
 		do
 			Precursor
 			set_service_option ("port", 9090)

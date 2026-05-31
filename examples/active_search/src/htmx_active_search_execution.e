@@ -8,6 +8,7 @@ inherit
 	WSF_FILTERED_ROUTED_EXECUTION
 	WSF_ROUTED_URI_HELPER
 	SHARED_EXECUTION_ENVIRONMENT
+	EWF_GLIMMER_INTEGRATION
 
 create
 	make
@@ -55,32 +56,38 @@ feature -- Events
 
 	handle_version (req: WSF_REQUEST; res: WSF_RESPONSE)
 		local
-			l_result: STRING_8
+			c: EWF_GLIMMER_CONTEXT
 		do
-			l_result := "Eiffel Web Framework: 24.11"
-			new_response_get (req, res, l_result)
+			create c.make (req, res)
+			c.text ("Eiffel Web Framework: 24.11")
 		end
 
 	execute_not_found (uri: READABLE_STRING_8; req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- `uri' is not found, redirect to default page
+		local
+			c: EWF_GLIMMER_CONTEXT
 		do
-			res.redirect_now_with_content (req.script_url ("/"), uri + ": not found.%NRedirection to " + req.script_url ("/"), "text/html")
+			create c.make (req, res)
+			c.redirect (req.script_url ("/"))
 		end
 
 	handle_search (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle GET /search?search=...
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_query: STRING
 			l_db: USER_DATABASE
 			l_users: ARRAYED_LIST [USER]
 			l_template: GLM_HTML_TEMPLATE
-			l_result: STRING_32
 		do
+			create c.make (req, res)
+
 			-- Simulate active search delay (300ms) to show search indicator
 			{EXECUTION_ENVIRONMENT}.sleep (300_000_000)
 
 			-- Extract search query parameter
-			if attached {WSF_STRING} req.query_parameter ("search") as query_val then
-				l_query := query_val.value
+			if attached c.query ("search") as query_val then
+				l_query := query_val.to_string_8
 			else
 				create l_query.make_empty
 			end
@@ -93,28 +100,7 @@ feature -- Events
 			create l_template.make
 			l_template.set_variable ("users", l_users)
 			l_template.set_variable ("query", l_query)
-			l_result := l_template.render_file (document_root.appended ("\search_results.html").name)
-
-			if l_template.has_error and then attached l_template.last_error as err then
-				new_response_get (req, res, "<tr><td colspan=%"5%" class=%"error%">" + err.to_string_8 + "</td></tr>")
-			else
-				new_response_get (req, res, l_result.to_string_8)
-			end
-		end
-
-feature {NONE} -- Implementation
-
-	new_response_get (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
-		local
-			h: HTTP_HEADER
-		do
-			create h.make
-			h.put_content_type_text_html
-			h.put_content_length (output.count)
-			h.put_current_date
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (output)
+			c.render_file (l_template, document_root.appended ("\search_results.html").name)
 		end
 
 end

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pokémon Infinite Scroll (HTMX & Eiffel)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  </head>
+  <body>
+    <!-- Background floating gradient orbs -->
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+
+    <div class="dashboard-wrapper">
+      <!-- Header Section -->
+      <div class="glass-card header-card">
+        <h1>Pokémon Species Registry</h1>
+        <p class="intro-text">
+          A premium, high-performance infinite scroll feed of Pokémon species. Powered by Eiffel and HTMX 2.x, using modern CSS transitions and dynamic viewport-revealed requests.
+        </p>
+      </div>
+
+      <!-- Main Content Card -->
+      <div class="glass-card table-card">
+        <div class="table-container">
+          <table id="pokemon-table">
+            <thead>
+              <tr>
+                <th style="width: 120px;">ID</th>
+                <th>Species Name</th>
+                <th style="width: 180px; text-align: center;">Avatar</th>
+              </tr>
+            </thead>
+            <tbody
+              hx-trigger="load"
+              hx-get="/pokemon-rows?page=1"
+              hx-indicator=".htmx-indicator"
+              hx-swap="beforeend"
+            >
+              <!-- Loaded rows will be appended here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Inline Loader at the bottom -->
+        <div class="loader-row">
+          <div class="htmx-indicator loader-inline">
+            <div class="shimmer-spinner small-spinner"></div>
+            <span class="loader-text">Loading more Pokémon species...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

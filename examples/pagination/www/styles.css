@@ -1,0 +1,311 @@
+:root {
+	--bg-gradient: linear-gradient(135deg, #090a15 0%, #0e0f25 50%, #05060b 100%);
+	--text-primary: #f3f4f6;
+	--text-secondary: #9ca3af;
+	--accent-primary: #6366f1; /* Indigo */
+	--accent-secondary: #a855f7; /* Purple */
+	--glass-bg: rgba(255, 255, 255, 0.03);
+	--glass-border: rgba(255, 255, 255, 0.08);
+	--glass-glow: rgba(99, 102, 241, 0.15);
+	--glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	background: var(--bg-gradient);
+	color: var(--text-primary);
+	overflow-x: hidden;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+}
+
+/* Background floating gradient orbs */
+.gradient-orb {
+	position: fixed;
+	width: 500px;
+	height: 500px;
+	border-radius: 50%;
+	filter: blur(120px);
+	z-index: -1;
+	opacity: 0.35;
+	pointer-events: none;
+	animation: float 25s ease-in-out infinite alternate;
+}
+
+.orb-1 {
+	background: radial-gradient(circle, var(--accent-primary) 0%, rgba(99, 102, 241, 0) 70%);
+	top: -10%;
+	left: -10%;
+}
+
+.orb-2 {
+	background: radial-gradient(circle, var(--accent-secondary) 0%, rgba(168, 85, 247, 0) 70%);
+	bottom: -15%;
+	right: -10%;
+	animation-delay: -10s;
+}
+
+@keyframes float {
+	0% {
+		transform: translate(0, 0) scale(1);
+	}
+	100% {
+		transform: translate(80px, 40px) scale(1.15);
+	}
+}
+
+.dashboard-wrapper {
+	width: 90%;
+	max-width: 800px;
+	margin: 5rem auto;
+	display: flex;
+	flex-direction: column;
+	gap: 2rem;
+	z-index: 1;
+}
+
+.glass-card {
+	background: var(--glass-bg);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border: 1px solid var(--glass-border);
+	border-radius: 24px;
+	padding: 2.5rem;
+	box-shadow: var(--glass-shadow);
+	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+	border-color: rgba(255, 255, 255, 0.12);
+	box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5), 0 0 20px 0 var(--glass-glow);
+}
+
+/* Header Styles */
+.header-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	border-left: 4px solid var(--accent-primary);
+}
+
+h1 {
+	margin: 0;
+	font-size: 2.5rem;
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	background: linear-gradient(to right, #ffffff, #d1d5db);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+p.intro-text {
+	margin: 0;
+	font-size: 1.1rem;
+	line-height: 1.6;
+	color: var(--text-secondary);
+}
+
+/* Loading Indicators */
+.htmx-indicator {
+	display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+	display: flex;
+}
+
+.shimmer-spinner {
+	width: 48px;
+	height: 48px;
+	border: 3.5px solid rgba(255, 255, 255, 0.05);
+	border-top: 3.5px solid var(--accent-primary);
+	border-right: 3.5px solid var(--accent-secondary);
+	border-radius: 50%;
+	animation: spin 0.9s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+	box-shadow: 0 0 15px var(--glass-glow);
+}
+
+.small-spinner {
+	width: 20px;
+	height: 20px;
+	border-width: 2px;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.loader-text {
+	font-size: 0.95rem;
+	color: var(--text-secondary);
+	letter-spacing: 0.05em;
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+.loader-inline {
+	align-items: center;
+	gap: 0.75rem;
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 0.6; }
+	50% { opacity: 1; }
+}
+
+/* Table Card Layout */
+.table-card {
+	padding: 1.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.table-container {
+	width: 100%;
+	overflow-x: auto;
+	border-radius: 16px;
+	border: 1px solid var(--glass-border);
+	background: rgba(0, 0, 0, 0.15);
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	text-align: left;
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+th {
+	background: rgba(255, 255, 255, 0.015);
+	color: #ffffff;
+	font-weight: 600;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 1.25rem 1.5rem;
+	border-bottom: 1px solid var(--glass-border);
+}
+
+td {
+	padding: 1rem 1.5rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+	color: var(--text-secondary);
+	font-size: 0.95rem;
+	vertical-align: middle;
+}
+
+tr:last-child td {
+	border-bottom: none;
+}
+
+tr {
+	transition: background-color 0.25s ease;
+}
+
+tr:hover td {
+	background: rgba(255, 255, 255, 0.025);
+	color: #ffffff;
+}
+
+/* Badge Styles */
+.user-id-badge {
+	background: rgba(99, 102, 241, 0.12);
+	color: #a5b4fc;
+	padding: 0.25rem 0.5rem;
+	border-radius: 6px;
+	font-size: 0.8rem;
+	font-weight: 600;
+	font-family: monospace;
+	border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.user-name {
+	font-family: 'Outfit', sans-serif;
+	font-weight: 500;
+	color: #ffffff;
+	text-transform: capitalize;
+}
+
+.pokemon-sprite {
+	width: 60px;
+	height: 60px;
+	object-fit: contain;
+	filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.3));
+	transition: transform 0.3s ease;
+}
+
+tr:hover .pokemon-sprite {
+	transform: scale(1.15) rotate(5deg);
+}
+
+/* Pagination Row */
+.pagination-controls-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.5rem 0.5rem 0 0.5rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#pagination-buttons {
+	display: flex;
+	align-items: center;
+	gap: 1.25rem;
+}
+
+.btn {
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	color: #ffffff;
+	padding: 0.6rem 1.2rem;
+	border-radius: 12px;
+	font-family: 'Outfit', sans-serif;
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover:not([disabled]) {
+	background: var(--accent-primary);
+	border-color: var(--accent-primary);
+	box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+	transform: translateY(-2px);
+}
+
+.btn:active:not([disabled]) {
+	transform: translateY(0);
+}
+
+.btn[disabled] {
+	opacity: 0.25;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.page-badge {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	color: var(--text-secondary);
+	padding: 0.4rem 1rem;
+	border-radius: 20px;
+	font-size: 0.85rem;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+}
+
+.indicator-wrapper {
+	min-width: 140px;
+	display: flex;
+	justify-content: flex-end;
+}
