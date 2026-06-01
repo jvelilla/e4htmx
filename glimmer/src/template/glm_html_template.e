@@ -433,11 +433,27 @@ feature -- HTML Safety
 				create Result.make_empty
 			else
 				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, False, compiled_templates_cache, max_cache_size, contract_mode)
-				create l_buffer.make (template.count * 8)
-				across l_nodes as node loop
-					node.item.render (l_context, l_buffer)
+				
+				if l_context.has_extends_node (l_nodes) then
+					if attached l_context.resolve_inheritance_chain (l_nodes) as l_chain then
+						l_nodes := l_chain
+					end
 				end
-				Result := escape_html (l_buffer)
+				
+				create l_buffer.make (template.count * 8)
+				if not l_context.has_error then
+					across l_nodes as node loop
+						node.item.render (l_context, l_buffer)
+					end
+				end
+				
+				if l_context.has_error then
+					last_error := l_context.last_error
+					last_contract_violation := l_context.last_contract_violation
+					create Result.make_empty
+				else
+					Result := escape_html (l_buffer)
+				end
 			end
 		end
 
@@ -458,31 +474,42 @@ feature {NONE} -- Implementation
 				create Result.make_empty
 			else
 				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
+				if attached a_name as n then
+					l_context.set_current_template_name (n)
+				end
 				
-				if attached layout as l_layout then
-					-- Layout is present. Render main template into a temporary buffer
-					create l_main_buffer.make (template.count * 8)
-					across l_nodes as node loop
-						node.item.render (l_context, l_main_buffer)
+				if l_context.has_extends_node (l_nodes) then
+					if attached l_context.resolve_inheritance_chain (l_nodes) as l_chain then
+						l_nodes := l_chain
 					end
-					-- If there is non-section content and "content" is not already defined, store it in "content"
-					if not l_main_buffer.is_empty and then not l_context.sections.has ("content") then
-						l_context.sections.force (l_main_buffer, "content")
-					end
-					
-					-- Render layout
-					create l_buffer.make (l_layout.count * 8)
-					l_nodes := get_compiled_template_with_name (l_layout, Void)
-					if not has_error then
+				end
+				
+				create l_buffer.make (template.count * 8)
+				
+				if not l_context.has_error then
+					if attached layout as l_layout then
+						-- Layout is present. Render main template into a temporary buffer
+						create l_main_buffer.make (template.count * 8)
+						across l_nodes as node loop
+							node.item.render (l_context, l_main_buffer)
+						end
+						-- If there is non-section content and "content" is not already defined, store it in "content"
+						if not l_main_buffer.is_empty and then not l_context.sections.has ("content") then
+							l_context.sections.force (l_main_buffer, "content")
+						end
+						
+						-- Render layout
+						l_nodes := get_compiled_template_with_name (l_layout, Void)
+						if not has_error then
+							across l_nodes as node loop
+								node.item.render (l_context, l_buffer)
+							end
+						end
+					else
+						-- No layout, render main template directly to l_buffer
 						across l_nodes as node loop
 							node.item.render (l_context, l_buffer)
 						end
-					end
-				else
-					-- No layout, render main template directly to l_buffer
-					create l_buffer.make (template.count * 8)
-					across l_nodes as node loop
-						node.item.render (l_context, l_buffer)
 					end
 				end
 				
@@ -526,15 +553,30 @@ feature {NONE} -- Implementation
 			if l_section = Void then
 				l_nodes := get_compiled_template_with_name (template, a_name)
 				if not has_error then
-					l_section := find_section_node (l_nodes, l_sec_name)
-					if l_section /= Void and then attached l_cache_key as k then
-						if section_nodes_cache.count >= max_cache_size then
-							section_nodes_cache.start
-							if not section_nodes_cache.off then
-								section_nodes_cache.remove (section_nodes_cache.key_for_iteration)
-							end
+					create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
+					if attached a_name as n then
+						l_context.set_current_template_name (n)
+					end
+					if l_context.has_extends_node (l_nodes) then
+						if attached l_context.resolve_inheritance_chain (l_nodes) as l_chain then
+							l_nodes := l_chain
 						end
-						section_nodes_cache.force (l_section, k)
+					end
+					
+					if not l_context.has_error then
+						l_section := find_section_node (l_nodes, l_sec_name)
+						if l_section /= Void and then attached l_cache_key as k then
+							if section_nodes_cache.count >= max_cache_size then
+								section_nodes_cache.start
+								if not section_nodes_cache.off then
+									section_nodes_cache.remove (section_nodes_cache.key_for_iteration)
+								end
+							end
+							section_nodes_cache.force (l_section, k)
+						end
+					else
+						last_error := l_context.last_error
+						last_contract_violation := l_context.last_contract_violation
 					end
 				end
 			end
@@ -542,7 +584,12 @@ feature {NONE} -- Implementation
 			if has_error then
 				create Result.make_empty
 			elseif l_section /= Void then
-				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
+				if l_context = Void then
+					create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
+					if attached a_name as n then
+						l_context.set_current_template_name (n)
+					end
+				end
 				create l_buffer.make (128)
 				across l_section.body as node loop
 					node.item.render (l_context, l_buffer)
@@ -581,6 +628,8 @@ feature {NONE} -- Implementation
 					if Result = Void and then attached l_cond.false_branch as l_false then
 						Result := find_section_node (l_false, a_name)
 					end
+				elseif attached {GLM_BLOCK_NODE} l_node as l_block then
+					Result := find_section_node (l_block.body, a_name)
 				end
 				i := i + 1
 			end

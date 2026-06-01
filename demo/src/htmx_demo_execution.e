@@ -83,6 +83,8 @@ feature -- Router
 			map_uri_agent ("/components-demo/render", agent handle_components_playground_render, router.methods_POST)
 			map_uri_agent ("/slots-demo", agent handle_slots_demo, router.methods_GET)
 			map_uri_agent ("/slots-demo/render", agent handle_slots_playground_render, router.methods_POST)
+			map_uri_agent ("/inheritance-demo", agent handle_inheritance_demo, router.methods_GET)
+			map_uri_agent ("/inheritance-demo/render", agent handle_inheritance_playground_render, router.methods_POST)
 
 			create www.make_with_path (document_root)
 			www.set_directory_index (<<"index2.html">>)
@@ -1074,6 +1076,102 @@ feature -- Template Helpers
 			end
 			if l_company /= Void and then not l_company.is_empty then
 				l_template.set_variable ("company", l_company)
+			end
+			
+			-- Render template
+			c.render (l_template, l_tpl_str)
+		end
+
+	handle_inheritance_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer template inheritance and playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Enable contract mode by default for playground showcase
+			l_template.set_contract_mode (True)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Template Inheritance Playground")
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("inheritance_demo.html").name)
+		end
+
+	handle_inheritance_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from inheritance playground to render template with extends/block
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_author: detachable STRING_32
+			l_version: detachable STRING_32
+			l_theme: detachable STRING_32
+			l_base_layout: detachable STRING_32
+			l_mid_layout: detachable STRING_32
+			l_tpl_str: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_author := c.form_value ("author")
+			if l_author /= Void then
+				l_author.left_adjust
+				l_author.right_adjust
+			end
+			
+			l_version := c.form_value ("version")
+			if l_version /= Void then
+				l_version.left_adjust
+				l_version.right_adjust
+			end
+			
+			l_theme := c.form_value ("theme")
+			if l_theme /= Void then
+				l_theme.left_adjust
+				l_theme.right_adjust
+			end
+			
+			l_base_layout := c.form_value ("base_layout")
+			if l_base_layout /= Void then
+				l_base_layout.left_adjust
+				l_base_layout.right_adjust
+			end
+			
+			l_mid_layout := c.form_value ("mid_layout")
+			if l_mid_layout /= Void then
+				l_mid_layout.left_adjust
+				l_mid_layout.right_adjust
+			end
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := ""
+			end
+			
+			create l_template.make
+			l_template.set_contract_mode (True)
+			
+			-- Register partials if provided
+			if l_base_layout /= Void and then not l_base_layout.is_empty then
+				l_template.register_partial ("base_layout", l_base_layout)
+			end
+			if l_mid_layout /= Void and then not l_mid_layout.is_empty then
+				l_template.register_partial ("mid_layout", l_mid_layout)
+			end
+			
+			-- Bind variables
+			if l_author /= Void and then not l_author.is_empty then
+				l_template.set_variable ("author", l_author)
+			end
+			if l_version /= Void and then not l_version.is_empty then
+				l_template.set_variable ("version", l_version)
+			end
+			if l_theme /= Void and then not l_theme.is_empty then
+				l_template.set_variable ("theme", l_theme)
 			end
 			
 			-- Render template

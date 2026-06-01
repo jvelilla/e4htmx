@@ -27,6 +27,8 @@ feature {NONE} -- Initialization
 			contract_mode := a_contract_mode
 			create sections.make (5)
 			create slots.make (5)
+			create block_overrides.make (5)
+			current_template_name := Void
 			is_partial_boundary := False
 			last_error := Void
 			is_isolated := False
@@ -49,6 +51,8 @@ feature {NONE} -- Initialization
 			helper_registry := a_parent.helper_registry
 			sections := a_parent.sections
 			create slots.make (5)
+			block_overrides := a_parent.block_overrides
+			current_template_name := a_parent.current_template_name
 			is_partial_boundary := False
 			max_recursion_depth := a_parent.max_recursion_depth
 			current_recursion_depth := a_parent.current_recursion_depth
@@ -81,6 +85,12 @@ feature -- Access
 
 	slots: STRING_TABLE [STRING_32]
 			-- Pre-rendered slot contents for content projection
+
+	block_overrides: STRING_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE]]
+			-- Overridden blocks by name
+
+	current_template_name: detachable STRING_32
+			-- Name/path of the template currently being rendered
 
 	is_partial_boundary: BOOLEAN
 			-- Is this context a partial template boundary?
@@ -202,6 +212,14 @@ feature -- Scoped Context
 			is_partial_boundary_set: is_partial_boundary = a_val
 		end
 
+	set_current_template_name (a_name: READABLE_STRING_GENERAL)
+			-- Set `current_template_name`
+		do
+			create current_template_name.make_from_string (a_name.to_string_32)
+		ensure
+			current_template_name_set: attached current_template_name as name and then name.same_string_general (a_name)
+		end
+
 feature {GLM_RENDER_CONTEXT} -- Implementation
 
 	set_current_recursion_depth (a_depth: INTEGER)
@@ -306,12 +324,22 @@ feature -- Operations and Parsing
 				else
 					l_sub_context := incremented_depth_context
 				end
+				l_sub_context.set_current_template_name (a_name)
 				l_sub_context.set_is_partial_boundary (True)
 				across a_slots as slot_cursor loop
 					l_sub_context.slots.force (slot_cursor.item, slot_cursor.key)
 				end
-				across l_nodes as node loop
-					node.item.render (l_sub_context, a_buffer)
+				
+				if l_sub_context.has_extends_node (l_nodes) then
+					if attached l_sub_context.resolve_inheritance_chain (l_nodes) as l_chain then
+						l_nodes := l_chain
+					end
+				end
+				
+				if not l_sub_context.has_error then
+					across l_nodes as node loop
+						node.item.render (l_sub_context, a_buffer)
+					end
 				end
 			end
 		end
@@ -601,6 +629,201 @@ feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE, GLM_VARIABL
 			end
 			create l_item.make_from_string (s.substring (l_start, s.count))
 			Result.extend (l_item)
+		end
+
+feature -- Template Inheritance Helpers
+
+	find_extends_node (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]): detachable GLM_EXTENDS_NODE
+			-- Find the extends node at the top level of the AST
+		local
+			i: INTEGER
+			l_node: GLM_TEMPLATE_NODE
+		do
+			from
+				i := 1
+			until
+				i > a_nodes.count or else Result /= Void
+			loop
+				l_node := a_nodes.i_th (i)
+				if attached {GLM_EXTENDS_NODE} l_node as l_ext then
+					Result := l_ext
+				end
+				i := i + 1
+			end
+		end
+
+	has_extends_node (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]): BOOLEAN
+			-- Does `a_nodes' contain an extends node at the top level?
+		do
+			Result := find_extends_node (a_nodes) /= Void
+		end
+
+	resolve_template_ast (a_name: STRING_32): detachable ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			-- Resolve template content by name (checking partials first, then files) and compile it
+		local
+			l_content: detachable STRING_32
+			l_file: PLAIN_TEXT_FILE
+			l_path: STRING_32
+		do
+			-- 1. Check partials
+			if partials.has (a_name) then
+				l_content := partials.item (a_name)
+			else
+				-- 2. Check filesystem relative to current template directory, or absolute/CWD
+				create l_path.make_from_string (a_name)
+				if attached current_template_name as cur_name then
+					l_path := resolve_relative_path (cur_name, a_name)
+				end
+				
+				create l_file.make_with_name (l_path)
+				if l_file.exists and then l_file.is_readable then
+					l_file.open_read
+					l_file.read_stream (l_file.count)
+					create l_content.make_from_string (l_file.last_string.to_string_32)
+					l_file.close
+				else
+					-- If relative path failed, try direct path (relative to CWD)
+					create l_file.make_with_name (a_name)
+					if l_file.exists and then l_file.is_readable then
+						l_file.open_read
+						l_file.read_stream (l_file.count)
+						create l_content.make_from_string (l_file.last_string.to_string_32)
+						l_file.close
+					end
+				end
+			end
+			
+			if attached l_content as content then
+				Result := get_compiled_template_with_name (content, a_name)
+			else
+				set_error ("Template not found: " + a_name)
+			end
+		end
+
+	resolve_relative_path (a_base_path, a_relative_path: STRING_32): STRING_32
+			-- Resolve a_relative_path relative to the directory of a_base_path
+		local
+			i: INTEGER
+			l_dir: STRING_32
+		do
+			from
+				i := a_base_path.count
+			until
+				i < 1 or else (a_base_path.item (i) = '/' or else a_base_path.item (i) = '\')
+			loop
+				i := i - 1
+			end
+			
+			if i > 0 then
+				create l_dir.make_from_string (a_base_path.substring (1, i))
+				create Result.make (l_dir.count + a_relative_path.count)
+				Result.append (l_dir)
+				Result.append (a_relative_path)
+			else
+				Result := a_relative_path
+			end
+		end
+
+	clean_template_name (a_name: STRING_32): STRING_32
+			-- Remove leading/trailing quotes from template name
+		do
+			create Result.make_from_string (a_name)
+			Result.left_adjust
+			Result.right_adjust
+			if Result.count >= 2 and then ((Result.starts_with ("%"") and Result.ends_with ("%"")) or else (Result.starts_with ("'") and Result.ends_with ("'"))) then
+				Result := Result.substring (2, Result.count - 1)
+				Result.left_adjust
+				Result.right_adjust
+			end
+		end
+
+	resolve_inheritance_chain (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]): detachable ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			-- Resolve the inheritance chain starting from `a_nodes'.
+			-- Returns the compiled AST of the root template in the chain,
+			-- and populates `block_overrides' with the resolved overrides.
+		local
+			l_visited: ARRAYED_LIST [STRING_32]
+			l_current_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			l_extends: detachable GLM_EXTENDS_NODE
+			l_parent_name: STRING_32
+			l_parent_nodes: detachable ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			l_chain: ARRAYED_LIST [ARRAYED_LIST [GLM_TEMPLATE_NODE]]
+			i: INTEGER
+		do
+			create l_visited.make (5)
+			l_visited.compare_objects
+			create l_chain.make (5)
+			
+			l_current_nodes := a_nodes
+			l_chain.extend (l_current_nodes)
+			
+			l_extends := find_extends_node (l_current_nodes)
+			from
+			until
+				l_extends = Void or else has_error
+			loop
+				l_parent_name := l_extends.parent_name
+				l_parent_name := clean_template_name (l_parent_name)
+				
+				if l_visited.has (l_parent_name) then
+					set_error ("Circular template inheritance detected: " + l_parent_name)
+					l_extends := Void
+				else
+					l_visited.extend (l_parent_name)
+					l_parent_nodes := resolve_template_ast (l_parent_name)
+					if attached l_parent_nodes as parent then
+						l_current_nodes := parent
+						l_chain.extend (l_current_nodes)
+						l_extends := find_extends_node (l_current_nodes)
+					else
+						l_extends := Void
+					end
+				end
+			end
+			
+			if not has_error then
+				-- Walk from leaf (1) to root parent (l_chain.count) to build overrides map
+				from
+					i := 1
+				until
+					i > l_chain.count
+				loop
+					collect_blocks (l_chain.i_th (i), block_overrides)
+					i := i + 1
+				end
+				Result := l_chain.i_th (l_chain.count)
+			end
+		end
+
+	collect_blocks (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]; a_overrides: STRING_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE]])
+			-- Recursively find all blocks in `a_nodes` and register them in `a_overrides` if not already present
+		local
+			l_node: GLM_TEMPLATE_NODE
+		do
+			across a_nodes as node loop
+				l_node := node.item
+				if attached {GLM_BLOCK_NODE} l_node as l_block then
+					if not a_overrides.has (l_block.name) then
+						a_overrides.force (l_block.body, l_block.name)
+					end
+					collect_blocks (l_block.body, a_overrides)
+				elseif attached {GLM_LOOP_NODE} l_node as l_loop then
+					collect_blocks (l_loop.body, a_overrides)
+				elseif attached {GLM_CONDITIONAL_NODE} l_node as l_cond then
+					collect_blocks (l_cond.true_branch, a_overrides)
+					if attached l_cond.false_branch as l_false then
+						collect_blocks (l_false, a_overrides)
+					end
+				elseif attached {GLM_SECTION_NODE} l_node as l_sec then
+					collect_blocks (l_sec.body, a_overrides)
+				elseif attached {GLM_FILL_NODE} l_node as l_fill then
+					collect_blocks (l_fill.body, a_overrides)
+				elseif attached {GLM_INCLUDE_NODE} l_node as l_inc then
+					if attached l_inc.body as l_inc_body then
+						collect_blocks (l_inc_body, a_overrides)
+					end
+				end
+			end
 		end
 
 end

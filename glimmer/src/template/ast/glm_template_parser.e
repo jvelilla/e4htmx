@@ -314,9 +314,30 @@ feature {NONE} -- Tag Processing
 			l_req_node: GLM_REQUIRE_NODE
 			l_expr_parser: GLM_EXPRESSION_PARSER
 			l_expr: GLM_EXPRESSION_NODE
+			l_ext_node: GLM_EXTENDS_NODE
+			l_block_node: GLM_BLOCK_NODE
 			i: INTEGER
 		do
-			if a_tag.starts_with ("if ") then
+			if a_tag.starts_with ("extends ") then
+				l_cond := a_tag.substring (9, a_tag.count)
+				l_cond.left_adjust
+				l_cond.right_adjust
+				create l_ext_node.make (l_cond)
+				active_list.extend (l_ext_node)
+				
+			elseif a_tag.starts_with ("block ") then
+				l_sec_name := a_tag.substring (7, a_tag.count)
+				l_sec_name.left_adjust
+				l_sec_name.right_adjust
+				
+				create l_block_node.make (l_sec_name, create {ARRAYED_LIST [GLM_TEMPLATE_NODE]}.make (10))
+				active_list.extend (l_block_node)
+				
+				stack.extend (active_list)
+				node_stack.extend (l_block_node)
+				active_list := l_block_node.body
+				
+			elseif a_tag.starts_with ("if ") then
 				l_cond := a_tag.substring (4, a_tag.count)
 				l_cond.left_adjust
 				l_cond.right_adjust

@@ -1390,4 +1390,102 @@ feature -- Test routines
 			assert ("dynamic_slot_variables", l_result.same_string ("<div class=%"card%"><p>Hello, Javier!</p></div>"))
 		end
 
+	test_basic_inheritance
+			-- Test basic template inheritance layout and block overrides
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("base", "<html><body>{{block header}}<header>Default Header</header>{{end}}{{block content}}{{end}}</body></html>")
+			
+			l_result := l_template.render ("{{extends base}}{{block content}}<h1>My Content</h1>{{end}}")
+			assert ("basic_inheritance", l_result.same_string ("<html><body><header>Default Header</header><h1>My Content</h1></body></html>"))
+		end
+
+	test_multi_level_inheritance
+			-- Test multi-level template inheritance (base -> layout -> page)
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("base", "<html><body>{{block header}}Base Header{{end}} - {{block content}}Base Content{{end}}</body></html>")
+			l_template.register_partial ("layout", "{{extends base}}{{block header}}Layout Header{{end}}")
+			
+			l_result := l_template.render ("{{extends layout}}{{block content}}Page Content{{end}}")
+			assert ("multi_level_inheritance", l_result.same_string ("<html><body>Layout Header - Page Content</body></html>"))
+		end
+
+	test_default_block_content
+			-- Test default block content rendering when child doesn't override
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("base", "<html><body>{{block header}}Default Header{{end}}</body></html>")
+			
+			l_result := l_template.render ("{{extends base}}")
+			assert ("default_block_content", l_result.same_string ("<html><body>Default Header</body></html>"))
+		end
+
+	test_relative_file_resolution
+			-- Test extending parent templates from filesystem using relative paths
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_base_file, l_child_file: PLAIN_TEXT_FILE
+			l_result: STRING
+		do
+			create l_base_file.make_open_write ("test_base.html")
+			l_base_file.put_string ("Base: {{block text}}Default{{end}}")
+			l_base_file.close
+			
+			create l_child_file.make_open_write ("test_child.html")
+			l_child_file.put_string ("{{extends test_base.html}}{{block text}}Overridden{{end}}")
+			l_child_file.close
+			
+			create l_template.make
+			l_result := l_template.render_file ("test_child.html")
+			assert ("relative_file_inheritance", l_result.same_string ("Base: Overridden"))
+			
+			-- Clean up
+			create l_base_file.make_with_name ("test_base.html")
+			if l_base_file.exists then
+				l_base_file.delete
+			end
+			create l_child_file.make_with_name ("test_child.html")
+			if l_child_file.exists then
+				l_child_file.delete
+			end
+		end
+
+	test_circular_extends
+			-- Test that circular extends inheritance is detected and reports error
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("a", "{{extends b}}")
+			l_template.register_partial ("b", "{{extends a}}")
+			
+			l_result := l_template.render ("{{extends a}}")
+			assert ("circular_error_flag", l_template.has_error)
+			assert ("circular_error_msg", attached l_template.last_error as err and then err.has_substring ("Circular template inheritance"))
+		end
+
+	test_missing_parent_template
+			-- Test that missing parent template reports error
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			
+			l_result := l_template.render ("{{extends non_existent_parent.html}}")
+			assert ("missing_parent_error_flag", l_template.has_error)
+			assert ("missing_parent_error_msg", attached l_template.last_error as err and then err.has_substring ("Template not found"))
+		end
+
 end

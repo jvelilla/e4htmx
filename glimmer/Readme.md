@@ -34,6 +34,10 @@
   - Declare placeholder slots in component templates using `{{slot name}}`
   - Project content into named slots using `{{fill name}}...{{end}}` blocks nested within an `{{include component}}...{{end}}` block include
   - Variable scope isolation between component context and caller template context
+- ✓ **Template Inheritance**:
+  - Multi-level template inheritance using `{{extends parent}}` and `{{block name}}...{{end}}`
+  - Overriding default blocks from layouts and parent templates
+  - Circular inheritance path validation to prevent infinite loops
 - ✓ **HTMX Partials**:
   - Targeted section rendering via `render_section` to support returning layout-free HTML fragments
 - ✓ **Error Reporting**:
@@ -178,3 +182,69 @@ Then project content into those slots from a calling template using `{{fill name
 ### Slot Isolation Rules:
 - **Scope Safety**: Content projected inside `{{fill}}` blocks resolves variable bindings in the **caller's context** where they are defined, not the component's context, preventing unintended variables bleeding.
 - **Missing Fills**: If a slot is declared in a component but the caller does not provide a matching `{{fill}}` block, Glimmer renders it safely as an empty string.
+
+## Template Inheritance
+
+Glimmer supports Jinja2-style multi-level template inheritance using `{{extends parent}}` and `{{block name}}...{{end}}` tags. This allows you to define a skeleton layout with overrideable sections (blocks), which child templates can inherit and selectively replace.
+
+### Base Layout
+Define named blocks with default content in a layout template (e.g. `base_layout`):
+
+```html
+<div class="base-layout">
+    <header>
+        {{block header}}
+            <h1>Default Header</h1>
+        {{end}}
+    </header>
+    <main>
+        {{block content}}{{end}}
+    </main>
+    <footer>
+        {{block footer}}
+            <p>Built with Glimmer</p>
+        {{end}}
+    </footer>
+</div>
+```
+
+### Child Template
+Inherit the layout and override specific blocks:
+
+```html
+{{extends base_layout}}
+
+{{block header}}
+    <h1>Welcome to My Custom Page</h1>
+{{end}}
+
+{{block content}}
+    <p>This paragraph replaces the content block in base_layout.</p>
+{{end}}
+```
+
+### Multi-level Inheritance
+Inheritance chains can be multiple levels deep. For instance, a child page can extend a mid-level dashboard layout, which in turn extends a generic base layout:
+
+```html
+<!-- dashboard_layout -->
+{{extends base_layout}}
+
+{{block header}}
+    <nav class="dashboard-nav">Dashboard Navigation</nav>
+{{end}}
+```
+
+```html
+<!-- admin_dashboard -->
+{{extends dashboard_layout}}
+
+{{block content}}
+    <p>Admin panel details...</p>
+{{end}}
+```
+
+### Rules & Validation:
+- **Top of the Template**: The `{{extends}}` tag must be located at the very beginning of the child template.
+- **Circular Dependency Guard**: Glimmer automatically checks for inheritance loops (e.g., A extends B, which extends A) and fails fast, raising an error to prevent infinite recursion.
+- **Default Blocks**: If a block is defined in a layout but not overridden by any child, its default body is rendered.
