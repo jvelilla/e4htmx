@@ -85,6 +85,8 @@ feature -- Router
 			map_uri_agent ("/slots-demo/render", agent handle_slots_playground_render, router.methods_POST)
 			map_uri_agent ("/inheritance-demo", agent handle_inheritance_demo, router.methods_GET)
 			map_uri_agent ("/inheritance-demo/render", agent handle_inheritance_playground_render, router.methods_POST)
+			map_uri_agent ("/whitespace-demo", agent handle_whitespace_demo, router.methods_GET)
+			map_uri_agent ("/whitespace-demo/render", agent handle_whitespace_playground_render, router.methods_POST)
 
 			create www.make_with_path (document_root)
 			www.set_directory_index (<<"index2.html">>)
@@ -630,6 +632,9 @@ feature -- Glimmer Filters Demo Event Handlers
 			l_text: STRING_32
 			l_price: REAL_64
 			l_email: STRING_32
+			l_score: REAL_64
+			l_status: STRING_32
+			l_date_str: STRING_32
 			l_tpl_str: STRING_32
 		do
 			create c.make (req, res)
@@ -652,6 +657,24 @@ feature -- Glimmer Filters Demo Event Handlers
 			else
 				l_email := "javier@eiffel.org"
 			end
+
+			if attached c.form_value ("val_score") as s and then s.is_double then
+				l_score := s.to_double
+			else
+				l_score := 94.5678
+			end
+
+			if attached c.form_value ("val_status") as st then
+				l_status := st
+			else
+				l_status := "active"
+			end
+
+			if attached c.form_value ("val_date") as dt then
+				l_date_str := dt
+			else
+				l_date_str := "2026-05-31T12:30"
+			end
 			
 			if attached c.form_value ("playground_template") as tpl then
 				l_tpl_str := tpl
@@ -670,6 +693,9 @@ feature -- Glimmer Filters Demo Event Handlers
 			l_template.set_variable ("val_text", l_text)
 			l_template.set_variable ("val_price", l_price)
 			l_template.set_variable ("val_email", l_email)
+			l_template.set_variable ("val_score", l_score)
+			l_template.set_variable ("val_status", l_status)
+			l_template.set_variable ("val_date", parse_datetime (l_date_str))
 			
 			-- Render playground content
 			c.render (l_template, l_tpl_str)
@@ -752,6 +778,33 @@ feature -- Template Helpers
 				end
 			else
 				create Result.make_empty
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	parse_datetime (a_str: READABLE_STRING_GENERAL): DATE_TIME
+			-- Parse "yyyy-MM-ddTHH:mm" format into DATE_TIME
+		local
+			l_str: STRING_32
+			y, m, d, h, min: INTEGER
+		do
+			l_str := a_str.to_string_32
+			l_str.left_adjust
+			l_str.right_adjust
+			if l_str.count >= 16 and then l_str.item (5) = '-' and then l_str.item (8) = '-' and then (l_str.item (11) = 'T' or l_str.item (11) = ' ') and then l_str.item (14) = ':' then
+				y := l_str.substring (1, 4).to_integer
+				m := l_str.substring (6, 7).to_integer
+				d := l_str.substring (9, 10).to_integer
+				h := l_str.substring (12, 13).to_integer
+				min := l_str.substring (15, 16).to_integer
+				if m >= 1 and m <= 12 and d >= 1 and d <= 31 and h >= 0 and h <= 23 and min >= 0 and min <= 59 then
+					create Result.make (y, m, d, h, min, 0)
+				else
+					create Result.make (2026, 6, 1, 12, 0, 0)
+				end
+			else
+				create Result.make (2026, 6, 1, 12, 0, 0)
 			end
 		ensure
 			result_attached: Result /= Void
@@ -1173,6 +1226,85 @@ feature -- Template Helpers
 			if l_theme /= Void and then not l_theme.is_empty then
 				l_template.set_variable ("theme", l_theme)
 			end
+			
+			-- Render template
+			c.render (l_template, l_tpl_str)
+		end
+
+	handle_whitespace_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer whitespace control playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_items: ARRAYED_LIST [STRING_32]
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Whitespace Control Playground")
+			create l_items.make (3)
+			l_items.extend ("apple")
+			l_items.extend ("banana")
+			l_items.extend ("cherry")
+			l_template.set_variable ("fruits", l_items)
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("whitespace_demo.html").name)
+		end
+
+	handle_whitespace_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from whitespace playground to dynamically compile and render template
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_fruits_str: detachable STRING_32
+			l_items: ARRAYED_LIST [STRING_32]
+			l_tpl_str: STRING_32
+			l_pos, l_start: INTEGER
+			l_sub: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_fruits_str := c.form_value ("fruits")
+			create l_items.make (5)
+			if l_fruits_str /= Void and then not l_fruits_str.is_empty then
+				from
+					l_start := 1
+					l_pos := l_fruits_str.substring_index (",", l_start)
+				until
+					l_pos = 0
+				loop
+					l_sub := l_fruits_str.substring (l_start, l_pos - 1)
+					l_sub.left_adjust
+					l_sub.right_adjust
+					if not l_sub.is_empty then
+						l_items.extend (l_sub)
+					end
+					l_start := l_pos + 1
+					l_pos := l_fruits_str.substring_index (",", l_start)
+				end
+				l_sub := l_fruits_str.substring (l_start, l_fruits_str.count)
+				l_sub.left_adjust
+				l_sub.right_adjust
+				if not l_sub.is_empty then
+					l_items.extend (l_sub)
+				end
+			else
+				l_items.extend ("apple")
+				l_items.extend ("banana")
+				l_items.extend ("cherry")
+			end
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := ""
+			end
+			
+			create l_template.make
+			l_template.set_variable ("fruits", l_items)
 			
 			-- Render template
 			c.render (l_template, l_tpl_str)

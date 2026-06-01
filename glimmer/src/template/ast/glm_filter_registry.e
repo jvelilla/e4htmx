@@ -43,7 +43,7 @@ feature -- Built-in Filters
 			-- Convert value to uppercase
 		do
 			if attached val as v then
-				create Result.make_from_string (v.out.to_string_32)
+				create Result.make_from_string (to_string_32 (v))
 				Result.to_upper
 			else
 				create Result.make_empty
@@ -54,7 +54,7 @@ feature -- Built-in Filters
 			-- Convert value to lowercase
 		do
 			if attached val as v then
-				create Result.make_from_string (v.out.to_string_32)
+				create Result.make_from_string (to_string_32 (v))
 				Result.to_lower
 			else
 				create Result.make_empty
@@ -67,7 +67,7 @@ feature -- Built-in Filters
 			l_str: STRING_32
 		do
 			if attached val as v then
-				l_str := v.out.to_string_32
+				l_str := to_string_32 (v)
 				if len <= 0 then
 					create Result.make_empty
 				elseif l_str.count <= len then
@@ -109,7 +109,7 @@ feature -- Built-in Filters
 				elseif attached l_date as d then
 					create Result.make_from_string (d.formatted_out (l_eiffel_format).to_string_32)
 				else
-					create Result.make_from_string (v.out.to_string_32)
+					create Result.make_from_string (to_string_32 (v))
 				end
 			else
 				create Result.make_empty
@@ -134,7 +134,7 @@ feature -- Built-in Filters
 				if l_is_num then
 					Result := format_decimal (l_val, decimals)
 				else
-					create Result.make_from_string (v.out.to_string_32)
+					create Result.make_from_string (to_string_32 (v))
 				end
 			else
 				create Result.make_empty
@@ -253,6 +253,18 @@ feature {NONE} -- Helpers
 			elseif attached {REAL} a_val as r then
 				Result := r.to_double
 			end
+		end
+
+	to_string_32 (a_val: ANY): STRING_32
+			-- Convert `a_val` to STRING_32, preserving Unicode characters if already a string
+		do
+			if attached {READABLE_STRING_GENERAL} a_val as l_str then
+				Result := l_str.to_string_32
+			else
+				Result := a_val.out.to_string_32
+			end
+		ensure
+			result_attached: Result /= Void
 		end
 
 end

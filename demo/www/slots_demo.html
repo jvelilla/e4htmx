@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Slot Support - Glimmer Template Engine</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <style>
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    @media (min-width: 768px) {
+      .concept-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    .concept-card {
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .concept-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.05);
+    }
+
+    .concept-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      font-family: var(--font-display);
+      color: white;
+    }
+
+    .concept-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .playground-columns {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (min-width: 992px) {
+      .playground-columns {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">G</div>
+        <span class="brand-text">Glimmer Engine</span>
+      </a>
+      <nav class="nav-menu">
+        <a href="/" class="nav-link">Dogs CRUD</a>
+        <a href="/filters-demo" class="nav-link">Filters &amp; Helpers</a>
+        <a href="/dbc-demo" class="nav-link">Design by Contract</a>
+        <a href="/components-demo" class="nav-link">Components</a>
+        <a href="/slots-demo" class="nav-link active">Slots</a>
+        <a href="/inheritance-demo" class="nav-link">Inheritance</a>
+        <a href="/whitespace-demo" class="nav-link">Whitespace</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    <h1 class="gradient-text">Glimmer Templates: Slot Support</h1>
+    <p class="subtitle">Enable true component composition and content projection. Declare placeholder areas using slots and fill them dynamically from the calling template, preserving variable isolation.</p>
+
+    <!-- Concepts Grid -->
+    <section class="concept-grid">
+      <!-- Slot Declaration Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #60a5fa;">
+          <span>🎯</span> Slot Declarations
+        </div>
+        <p class="concept-desc">
+          Use the <code class="code-inline">&#123;&#123;slot name&#125;&#125;</code> tag inside a component to declare a placeholder area where custom HTML content can be projected by callers.
+        </p>
+      </article>
+
+      <!-- Content Projection Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #34d399;">
+          <span>📥</span> Content Projection
+        </div>
+        <p class="concept-desc">
+          Define calling blocks using the nested <code class="code-inline">&#123;&#123;include component&#125;&#125;</code> syntax. Inside, use <code class="code-inline">&#123;&#123;fill name&#125;&#125;...&#123;&#123;end&#125;&#125;</code> to project HTML blocks.
+        </p>
+      </article>
+
+      <!-- Scope Resolution Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #f472b6;">
+          <span>🔒</span> Scoped Context Safety
+        </div>
+        <p class="concept-desc">
+          Fill blocks resolve variables in the parent context where they are defined, whereas components render in their own scope. Slot boundaries prevent context bleed.
+        </p>
+      </article>
+    </section>
+
+    <!-- Sandbox Card -->
+    <section class="card" style="margin-bottom: 2rem;">
+      <h2 class="card-title" style="border-bottom: none; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background: linear-gradient(to bottom, var(--primary), var(--accent)); border-radius: 4px; display: inline-block;"></span>
+        Slot &amp; Fill Playground
+      </h2>
+      <p class="subtitle" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Modify the component slot definitions or fill projection blocks below, and watch Glimmer recompile and project the content dynamically.</p>
+
+      <!-- Practice Scenarios Bar -->
+      <div class="scenarios-bar" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+        <span style="color: var(--text-secondary); font-size: 0.9rem; font-weight: bold;">Practice Scenarios:</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('basic', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(99, 102, 241, 0.4);">1. Basic Card</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('alert', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(52, 211, 153, 0.4);">2. Alert Banner</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('nested', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(244, 114, 182, 0.4);">3. Scoped Isolation</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('missing', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(245, 158, 11, 0.4);">4. Missing Fills</button>
+      </div>
+
+      <form id="playground-form"
+        hx-post="/slots-demo/render"
+        hx-target="#playground-result"
+        hx-trigger="submit, keyup changed delay:400ms from:input, keyup changed delay:400ms from:textarea">
+        
+        <div class="playground-grid">
+          <!-- Variables Bindings -->
+          <div class="btn-secondary" style="border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%;">
+            <h3 style="font-size: 1rem; color: white; margin-bottom: 1.25rem;">1. Bind Parent Variables</h3>
+            
+            <div class="form-group">
+              <label for="user_name">User Name (<code class="code-inline">user_name</code>)</label>
+              <input id="user_name" name="user_name" type="text" value="Javier" placeholder="Username in parent context" />
+            </div>
+
+            <div class="form-group">
+              <label for="user_role">User Role (<code class="code-inline">user_role</code>)</label>
+              <input id="user_role" name="user_role" type="text" value="Architect" placeholder="Role in parent context" />
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="company">Company Name (<code class="code-inline">company</code>)</label>
+              <input id="company" name="company" type="text" value="Eiffel Language Foundation" placeholder="Company in parent context" />
+            </div>
+          </div>
+
+          <!-- Component Definition with Slots -->
+          <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0;">
+            <label for="component_template" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: white; font-weight: 700;">2. Component with Slots (<code class="code-inline">components/card_component.html</code>)</span>
+            </label>
+            <textarea id="component_template" name="component_template" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.85rem; min-height: 180px;" required>&lt;div class="card" style="border: 2px solid rgba(99, 102, 241, 0.25); background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.01) 100%); border-radius: var(--radius-lg); padding: 1.5rem;"&gt;
+  &lt;div class="card-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;"&gt;
+    &#123;&#123;slot header&#125;&#125;
+  &lt;/div&gt;
+  &lt;div class="card-body" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);"&gt;
+    &#123;&#123;slot content&#125;&#125;
+  &lt;/div&gt;
+  &lt;div class="card-footer" style="margin-top: 1.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted);"&gt;
+    &#123;&#123;slot footer&#125;&#125;
+  &lt;/div&gt;
+&lt;/div&gt;</textarea>
+          </div>
+        </div>
+
+        <!-- Main Template defining Fills -->
+        <div class="form-group" style="display: flex; flex-direction: column; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+          <label for="playground_template" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span style="color: white; font-weight: 700;">3. Calling Template (Projects content into slots)</span>
+          </label>
+          <textarea id="playground_template" name="playground_template" style="font-family: var(--font-mono); font-size: 0.85rem; min-height: 160px;" required>&#123;&#123;include card_component&#125;&#125;
+  &#123;&#123;fill header&#125;&#125;
+    &lt;h3 style="margin: 0; color: #60a5fa; font-family: var(--font-display); font-size: 1.25rem;"&gt;
+      💥 Dynamic Eiffel Component Card
+    &lt;/h3&gt;
+  &#123;&#123;end&#125;&#125;
+
+  &#123;&#123;fill content&#125;&#125;
+    &lt;p style="margin: 0;"&gt;
+      This text is projected into the &lt;code&gt;body&lt;/code&gt; slot! We can resolve parent context variables here, such as: &lt;strong&gt;&#123;company&#125;&lt;/strong&gt;.
+    &lt;/p>
+  &#123;&#123;end&#125;&#125;
+
+  &#123;&#123;fill footer&#125;&#125;
+    &lt;span style="display: flex; justify-content: space-between;"&gt;
+      &lt;span&gt;Author: &lt;strong&gt;&#123;user_name&#125;&lt;/strong&gt;&lt;/span&gt;
+      &lt;span&gt;Role: &lt;em&gt;&#123;user_role&#125;&lt;/em&gt;&lt;/span&gt;
+    &lt;/span&gt;
+  &#123;&#123;end&#125;&#125;
+&#123;&#123;end&#125;&#125;</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-playground-submit" style="width: 100%;">Render Component slots</button>
+      </form>
+
+      <!-- Terminal Output -->
+      <div style="margin-top: 2rem;">
+        <h3 style="font-size: 1rem; color: white; margin-bottom: 0.75rem;">4. Live Render Output</h3>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">glimmer-slot-projection-renderer</span>
+          </div>
+          <div id="playground-result" class="terminal-body" style="background-color: #050b18; min-height: 180px; white-space: pre-wrap; padding: 1.25rem; color: var(--text-primary);">
+            <div style="color: var(--text-secondary); text-align: center; padding-top: 3.5rem;">Modify any input or template above to trigger rendering!</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Syntax Reference -->
+    <section style="margin-bottom: 3rem;">
+      <h2 style="font-size: 1.5rem; color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background-color: var(--primary); border-radius: 4px; display: inline-block;"></span>
+        Slots Syntax Reference
+      </h2>
+      
+      <div class="grid grid-3">
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Slot Declaration</h3>
+            <span class="badge badge-info explorer-badge">slot</span>
+          </div>
+          <p class="explorer-desc">Declares a named target area inside a component template where callers can insert custom markup.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;slot header&#125;&#125;</span></div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">&#123;&#123;slot content&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Declared inside partials. Unfilled slots evaluate to an empty string.</div>
+          </div>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Content Fill</h3>
+            <span class="badge badge-info explorer-badge">fill</span>
+          </div>
+          <p class="explorer-desc">Provides the custom HTML markup to project into the matching slot by name.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;fill header&#125;&#125;...&#123;&#123;end&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Declared nested inside a block include. Must be closed with <code class="code-inline">&#123;&#123;end&#125;&#125;</code>.</div>
+          </div>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Block Include</h3>
+            <span class="badge badge-warning explorer-badge">include</span>
+          </div>
+          <p class="explorer-desc">Includes a partial and wraps fill projection blocks. Requires a matching closing tag.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;include comp&#125;&#125;...&#123;&#123;end&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Parsed as a block include if immediately followed by <code class="code-inline">&#123;&#123;fill&#125;&#125;</code> block tags.</div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>Eiffel Web Framework &amp; Glimmer Template Engine Demo</div>
+  </footer>
+
+  <!-- Scenario Loader Script -->
+  <script>
+    const scenarios = {
+      basic: {
+        userName: "Javier",
+        userRole: "Architect",
+        company: "Eiffel Language Foundation",
+        component: `<div class="card" style="border: 2px solid rgba(99, 102, 241, 0.25); background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(99, 102, 241, 0.01) 100%); border-radius: var(--radius-lg); padding: 1.5rem;">
+  <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+    \x7b\x7bslot header\x7d\x7d
+  </div>
+  <div class="card-body" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
+    \x7b\x7bslot content\x7d\x7d
+  </div>
+  <div class="card-footer" style="margin-top: 1.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted);">
+    \x7b\x7bslot footer\x7d\x7d
+  </div>
+</div>`,
+        playground: `\x7b\x7binclude card_component\x7d\x7d
+  \x7b\x7bfill header\x7d\x7d
+    <h3 style="margin: 0; color: #60a5fa; font-family: var(--font-display); font-size: 1.25rem;">
+      💥 Dynamic Eiffel Component Card
+    </h3>
+  \x7b\x7bend\x7d\x7d
+
+  \x7b\x7bfill content\x7d\x7d
+    <p style="margin: 0;">
+      This text is projected into the <code>body</code> slot! We can resolve parent context variables here, such as: <strong>\x7bcompany\x7d</strong>.
+    </p>
+  \x7b\x7bend\x7d\x7d
+
+  \x7b\x7bfill footer\x7d\x7d
+    <span style="display: flex; justify-content: space-between;">
+      <span>Author: <strong>\x7buser_name\x7d</strong></span>
+      <span>Role: <em>\x7buser_role\x7d</em></span>
+    </span>
+  \x7b\x7bend\x7d\x7d
+\x7b\x7bend\x7d\x7d`
+      },
+      alert: {
+        userName: "Javier",
+        userRole: "Architect",
+        company: "Eiffel Language Foundation",
+        component: `<div class="alert-banner" style="background-color: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); padding: 1.25rem; border-radius: var(--radius-md); color: #a7f3d0; display: flex; align-items: flex-start; gap: 0.75rem;">
+  <div class="alert-icon" style="font-size: 1.25rem; line-height: 1;">
+    \x7b\x7bslot icon\x7d\x7d
+  </div>
+  <div class="alert-message" style="flex-grow: 1; font-size: 0.9rem;">
+    \x7b\x7bslot message\x7d\x7d
+  </div>
+</div>`,
+        playground: `\x7b\x7binclude card_component\x7d\x7d
+  \x7b\x7bfill icon\x7d\x7d🟢\x7b\x7bend\x7d\x7d
+  \x7b\x7bfill message\x7d\x7d
+    <strong style="color: white; display: block; margin-bottom: 0.25rem;">Success Alert!</strong>
+    Hello <strong>\x7buser_name\x7d</strong>, you successfully compiled and loaded the Alert Banner component using Glimmer slots!
+  \x7b\x7bend\x7d\x7d
+\x7b\x7bend\x7d\x7d`
+      },
+      nested: {
+        userName: "Javier",
+        userRole: "Architect",
+        company: "Eiffel Language Foundation",
+        component: `<div class="profile-card" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; background-color: var(--bg-card);">
+  <div style="display: flex; align-items: center; gap: 1rem;">
+    <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">J</div>
+    <div style="flex-grow: 1;">
+      \x7b\x7bslot details\x7d\x7d
+    </div>
+  </div>
+  <div style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem; font-size: 0.85rem; color: var(--text-secondary);">
+    \x7b\x7bslot additional_info\x7d\x7d
+  </div>
+</div>`,
+        playground: `\x7b\x7binclude card_component\x7d\x7d
+  \x7b\x7bfill details\x7d\x7d
+    <h4 style="margin: 0; color: white;">\x7buser_name\x7d</h4>
+    <span style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">\x7buser_role\x7d</span>
+  \x7b\x7bend\x7d\x7d
+  
+  \x7b\x7bfill additional_info\x7d\x7d
+    <div style="background-color: rgba(255, 255, 255, 0.02); padding: 0.5rem; border-radius: var(--radius-sm);">
+      Affiliation: <strong>\x7bcompany\x7d</strong>
+    </div>
+  \x7b\x7bend\x7d\x7d
+\x7b\x7bend\x7d\x7d`
+      },
+      missing: {
+        userName: "Javier",
+        userRole: "Architect",
+        company: "Eiffel Language Foundation",
+        component: `<div class="card" style="border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md);">
+  <h4>User Profile</h4>
+  <div style="margin-bottom: 0.5rem;">
+    <strong>Primary Role:</strong> \x7b\x7bslot primary_role\x7d\x7d
+  </div>
+  <div>
+    <strong>Secondary Role (Optional):</strong> \x7b\x7bslot secondary_role\x7d\x7d
+  </div>
+</div>`,
+        playground: `\x7b\x7binclude card_component\x7d\x7d
+  \x7b\x7bfill primary_role\x7d\x7d
+    <span>\x7buser_role\x7d</span>
+  \x7b\x7bend\x7d\x7d
+  
+  <!-- Note that we do NOT provide a fill for secondary_role -->
+  <!-- Glimmer will render the missing slot safely as an empty string -->
+\x7b\x7bend\x7d\x7d`
+      }
+    };
+
+    function loadScenario(name, event) {
+      const s = scenarios[name];
+      if (!s) return;
+      document.getElementById('user_name').value = s.userName;
+      document.getElementById('user_role').value = s.userRole;
+      document.getElementById('company').value = s.company;
+      document.getElementById('component_template').value = s.component;
+      document.getElementById('playground_template').value = s.playground;
+      
+      // Update active button styles
+      const buttons = document.querySelectorAll('.scenarios-bar button');
+      buttons.forEach(btn => {
+        btn.style.backgroundColor = 'var(--btn-secondary-bg, rgba(255,255,255,0.05))';
+        btn.style.color = 'var(--text-secondary)';
+      });
+      
+      const activeBtn = event ? event.currentTarget : null;
+      if (activeBtn) {
+        activeBtn.style.backgroundColor = 'var(--primary)';
+        activeBtn.style.color = 'white';
+      }
+
+      // Trigger HTMX rendering automatically
+      htmx.trigger('#playground-form', 'submit');
+    }
+
+    // Auto-load the first scenario on page load
+    window.onload = function() {
+      // Highlight the first button as active
+      const firstBtn = document.querySelector('.scenarios-bar button');
+      if (firstBtn) {
+        firstBtn.style.backgroundColor = 'var(--primary)';
+        firstBtn.style.color = 'white';
+      }
+      loadScenario('basic');
+    };
+  </script>
+</body>
+
+</html>

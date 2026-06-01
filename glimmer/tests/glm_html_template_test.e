@@ -1034,6 +1034,51 @@ feature -- Test routines
 			assert ("render_success", l_result.same_string ("Hello"))
 		end
 
+	test_whitespace_control
+			-- Test whitespace control delimiters ({{- and -}})
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+			l_items: ARRAYED_LIST [STRING]
+		do
+			create l_template.make
+
+			-- 1. Test left trim
+			l_template.set_variable ("show", True)
+			l_result := l_template.render ("Hello, %N  %T {{- if show}}World{{end}}")
+			assert ("left_trim", l_result.same_string_general ("Hello,World"))
+
+			-- 2. Test right trim
+			l_template.set_variable ("show", True)
+			l_result := l_template.render ("Hello, {{if show -}} %N  %T World{{end}}")
+			assert ("right_trim", l_result.same_string_general ("Hello, World"))
+
+			-- 3. Test both trims in loop
+			create l_items.make (2)
+			l_items.extend ("A")
+			l_items.extend ("B")
+			l_template.set_variable ("items", l_items)
+			l_result := l_template.render (
+				"Items:%N" +
+				"{{- each item in items }}%N" +
+				"<li>{item}</li>%N" +
+				"{{- end }}%N" +
+				"Done")
+			assert ("loop_whitespace_trim", l_result.same_string_general ("Items:%N<li>A</li>%N<li>B</li>%NDone"))
+
+			-- 4. Test back-to-back trims
+			l_result := l_template.render (
+				"A%N" +
+				"{{- if show -}}%N" +
+				"B%N" +
+				"{{- end -}}%N" +
+				"{{- if show -}}%N" +
+				"C%N" +
+				"{{- end -}}%N" +
+				"D")
+			assert ("back_to_back_trims", l_result.same_string_general ("ABCD"))
+		end
+
 	test_elsif_tag
 			-- Test else if and elsif parsing and branching
 		local
@@ -1223,7 +1268,7 @@ feature -- Test routines
 			assert ("currency_usd_filter", l_result.same_string_general ("$125.50"))
 			
 			l_result := l_template.render ("{price | currency: %"EUR%"}")
-			assert ("currency_eur_filter", l_result.same_string_general ("€125.50"))
+			assert ("currency_eur_filter", l_result.same_string_general ({STRING_32} "%/8364/125.50"))
 		end
 
 	test_filter_chaining

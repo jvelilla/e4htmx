@@ -204,12 +204,14 @@ feature -- Element Change
 		local
 			l_file: PLAIN_TEXT_FILE
 			l_template: STRING_32
+			l_conv: UTF_CONVERTER
 		do
 			create l_file.make_with_name (filename.to_string_32)
 			if l_file.exists and then l_file.is_readable then
 				l_file.open_read
 				l_file.read_stream (l_file.count)
-				create l_template.make_from_string (l_file.last_string.to_string_32)
+				create l_conv
+				l_template := l_conv.utf_8_string_8_to_string_32 (l_file.last_string)
 				l_file.close
 				register_partial (name, l_template)
 			else
@@ -236,13 +238,15 @@ feature -- Operations
 		local
 			l_file: PLAIN_TEXT_FILE
 			l_template: STRING_32
+			l_conv: UTF_CONVERTER
 		do
 			last_error := Void
 			create l_file.make_with_name (filename.to_string_32)
 			if l_file.exists and then l_file.is_readable then
 				l_file.open_read
 				l_file.read_stream (l_file.count)
-				create l_template.make_from_string (l_file.last_string.to_string_32)
+				create l_conv
+				l_template := l_conv.utf_8_string_8_to_string_32 (l_file.last_string)
 				l_file.close
 				Result := render_with_name (l_template, filename)
 			else

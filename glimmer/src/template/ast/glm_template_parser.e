@@ -47,6 +47,10 @@ feature -- Parsing
 			l_dump_var: STRING_32
 			l_raw_var_content: STRING_32
 			l_parsed: TUPLE [var_name: STRING_32; filters: ARRAYED_LIST [GLM_FILTER_INVOCATION]]
+			l_text_str: STRING_32
+			l_trim_left, l_trim_right: BOOLEAN
+			l_tag_start, l_tag_end: INTEGER
+			trim_next_leading_whitespace: BOOLEAN
 		do
 			last_error := Void
 			create Result.make (20)
@@ -57,6 +61,7 @@ feature -- Parsing
 			create template.make_from_string (a_template.to_string_32)
 			n := template.count
 			l_text_start := 1
+			trim_next_leading_whitespace := False
 			
 			from
 				i := 1
@@ -67,23 +72,56 @@ feature -- Parsing
 				if l_char = '{' then
 					-- Check if we have block tag "{{ " or variable placeholder "{"
 					if i + 1 <= n and then template.item (i + 1) = '{' then
-						-- Block tag starts here. First collect preceding static text.
-						if i > l_text_start then
-							create l_text_node.make (template.substring (l_text_start, i - 1))
-							active_list.extend (l_text_node)
-						end
-						
-						l_start := i
-						i := i + 2
-						
 						-- Find matching "}}"
-						l_end_pos := template.substring_index ("}}", i)
+						l_end_pos := template.substring_index ("}}", i + 2)
 						if l_end_pos > 0 then
-							l_tag := template.substring (l_start + 2, l_end_pos - 1)
+							l_trim_left := False
+							if i + 2 <= n and then template.item (i + 2) = '-' then
+								l_trim_left := True
+							end
+							
+							-- Block tag starts here. First collect preceding static text.
+							if i > l_text_start then
+								l_text_str := template.substring (l_text_start, i - 1)
+								if trim_next_leading_whitespace then
+									l_text_str := trim_leading_whitespace (l_text_str)
+									trim_next_leading_whitespace := False
+								end
+								if l_trim_left then
+									l_text_str := trim_trailing_whitespace (l_text_str)
+								end
+								if not l_text_str.is_empty then
+									create l_text_node.make (l_text_str)
+									active_list.extend (l_text_node)
+								end
+							else
+								trim_next_leading_whitespace := False
+							end
+							
+							l_start := i
+							-- Now parse the tag
+							l_tag_start := l_start + 2
+							l_tag_end := l_end_pos - 1
+							
+							if l_tag_start <= l_tag_end and then template.item (l_tag_start) = '-' then
+								l_tag_start := l_tag_start + 1
+							end
+							
+							l_trim_right := False
+							if l_tag_start <= l_tag_end and then template.item (l_tag_end) = '-' then
+								l_trim_right := True
+								l_tag_end := l_tag_end - 1
+							end
+							
+							l_tag := template.substring (l_tag_start, l_tag_end)
 							l_tag.left_adjust
 							l_tag.right_adjust
 							
 							process_block_tag (l_tag, l_end_pos + 2)
+							
+							if l_trim_right then
+								trim_next_leading_whitespace := True
+							end
 							
 							l_text_start := l_end_pos + 2
 							i := l_end_pos + 2
@@ -94,8 +132,17 @@ feature -- Parsing
 					else
 						-- Regular variable placeholder start. Collect preceding static text.
 						if i > l_text_start then
-							create l_text_node.make (template.substring (l_text_start, i - 1))
-							active_list.extend (l_text_node)
+							l_text_str := template.substring (l_text_start, i - 1)
+							if trim_next_leading_whitespace then
+								l_text_str := trim_leading_whitespace (l_text_str)
+								trim_next_leading_whitespace := False
+							end
+							if not l_text_str.is_empty then
+								create l_text_node.make (l_text_str)
+								active_list.extend (l_text_node)
+							end
+						else
+							trim_next_leading_whitespace := False
 						end
 						
 						l_val_end := template.index_of ('}', i)
@@ -141,8 +188,15 @@ feature -- Parsing
 			
 			-- Collect trailing text
 			if not has_error and then n >= l_text_start then
-				create l_text_node.make (template.substring (l_text_start, n))
-				active_list.extend (l_text_node)
+				l_text_str := template.substring (l_text_start, n)
+				if trim_next_leading_whitespace then
+					l_text_str := trim_leading_whitespace (l_text_str)
+					trim_next_leading_whitespace := False
+				end
+				if not l_text_str.is_empty then
+					create l_text_node.make (l_text_str)
+					active_list.extend (l_text_node)
+				end
 			end
 			
 			-- Check for mismatched block tags
@@ -651,6 +705,61 @@ feature {NONE} -- Tag Processing
 				c := s.item (j)
 				Result := c.is_alpha_numeric or c = '_' or c = '.'
 				j := j + 1
+			end
+		end
+
+feature {NONE} -- Whitespace Helper Utilities
+
+	trim_leading_whitespace (s: STRING_32): STRING_32
+			-- New string with leading whitespace (spaces, tabs, newlines, carriage returns) removed from `s`
+		local
+			j, n: INTEGER
+			stop: BOOLEAN
+			c: CHARACTER_32
+		do
+			n := s.count
+			from
+				j := 1
+			until
+				j > n or stop
+			loop
+				c := s.item (j)
+				if c = ' ' or c = '%T' or c = '%N' or c = '%R' then
+					j := j + 1
+				else
+					stop := True
+				end
+			end
+			if j > n then
+				create Result.make_empty
+			else
+				Result := s.substring (j, n)
+			end
+		end
+
+	trim_trailing_whitespace (s: STRING_32): STRING_32
+			-- New string with trailing whitespace (spaces, tabs, newlines, carriage returns) removed from `s`
+		local
+			j: INTEGER
+			stop: BOOLEAN
+			c: CHARACTER_32
+		do
+			from
+				j := s.count
+			until
+				j < 1 or stop
+			loop
+				c := s.item (j)
+				if c = ' ' or c = '%T' or c = '%N' or c = '%R' then
+					j := j - 1
+				else
+					stop := True
+				end
+			end
+			if j < 1 then
+				create Result.make_empty
+			else
+				Result := s.substring (1, j)
 			end
 		end
 

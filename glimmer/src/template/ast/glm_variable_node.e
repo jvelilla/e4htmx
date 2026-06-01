@@ -57,7 +57,11 @@ feature -- Rendering
 				end
 				
 				if attached l_val as val then
-					create l_resolved.make_from_string (val.out.to_string_32)
+					if attached {READABLE_STRING_GENERAL} val as l_str then
+						l_resolved := l_str.to_string_32
+					else
+						l_resolved := val.out.to_string_32
+					end
 
 					-- Apply HTML escaping if needed
 					if a_context.auto_escape and not is_raw then

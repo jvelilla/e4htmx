@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Whitespace Control - Glimmer Template Engine</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <style>
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    @media (min-width: 768px) {
+      .concept-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    .concept-card {
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .concept-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.05);
+    }
+
+    .concept-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      font-family: var(--font-display);
+      color: white;
+    }
+
+    .concept-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .playground-columns {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (min-width: 992px) {
+      .playground-columns {
+        grid-template-columns: 1fr 2fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">G</div>
+        <span class="brand-text">Glimmer Engine</span>
+      </a>
+      <nav class="nav-menu">
+        <a href="/" class="nav-link">Dogs CRUD</a>
+        <a href="/filters-demo" class="nav-link">Filters &amp; Helpers</a>
+        <a href="/dbc-demo" class="nav-link">Design by Contract</a>
+        <a href="/components-demo" class="nav-link">Components</a>
+        <a href="/slots-demo" class="nav-link">Slots</a>
+        <a href="/inheritance-demo" class="nav-link">Inheritance</a>
+        <a href="/whitespace-demo" class="nav-link active">Whitespace</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    <h1 class="gradient-text">Glimmer Templates: Whitespace Control</h1>
+    <p class="subtitle">Clean up unwanted blank lines and indentation in your output HTML or text templates. By placing hyphens adjacent to template delimiters (<code>&#123;&#123;-</code> and <code>-&#125;&#125;</code>), you can trim the trailing or leading whitespace of adjacent static text blocks.</p>
+
+    <!-- Concepts Grid -->
+    <section class="concept-grid">
+      <!-- Left Trimming Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #60a5fa;">
+          <span>⬅️</span> Left Trimming (<code>&#123;&#123;-</code>)
+        </div>
+        <p class="concept-desc">
+          Adding a hyphen immediately after the opening brace removes all trailing whitespace (spaces, tabs, newlines) from the static text node immediately preceding the tag.
+        </p>
+      </article>
+
+      <!-- Right Trimming Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #34d399;">
+          <span>➡️</span> Right Trimming (<code>-&#125;&#125;</code>)
+        </div>
+        <p class="concept-desc">
+          Adding a hyphen immediately before the closing brace removes all leading whitespace (spaces, tabs, newlines) from the static text node immediately following the tag.
+        </p>
+      </article>
+
+      <!-- Layout/Indentation Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #f472b6;">
+          <span>🧹</span> Clean Indentation
+        </div>
+        <p class="concept-desc">
+          Allows you to write readable, nicely-indented nested loops and conditionals in your source templates without injecting extra carriage returns or double spacing into the output.
+        </p>
+      </article>
+    </section>
+
+    <!-- Sandbox Card -->
+    <section class="card" style="margin-bottom: 2rem;">
+      <h2 class="card-title" style="border-bottom: none; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background: linear-gradient(to bottom, var(--primary), var(--accent)); border-radius: 4px; display: inline-block;"></span>
+        Whitespace Control Playground
+      </h2>
+      <p class="subtitle" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Modify the variables or template below. Toggle hyphens on block tags and see the output clean up instantly in the terminal panel.</p>
+
+      <!-- Practice Scenarios Bar -->
+      <div class="scenarios-bar" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+        <span style="color: var(--text-secondary); font-size: 0.9rem; font-weight: bold;">Practice Scenarios:</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('loop_no_trim', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(99, 102, 241, 0.4);">1. Loop (No Trim)</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('loop_with_trim', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(52, 211, 153, 0.4);">2. Loop (Clean List)</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('full_trim', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(244, 114, 182, 0.4);">3. Full Inline Trim</button>
+      </div>
+
+      <form id="playground-form"
+        hx-post="/whitespace-demo/render"
+        hx-target="#playground-result"
+        hx-trigger="submit, keyup changed delay:400ms from:input, keyup changed delay:400ms from:textarea">
+        
+        <div class="playground-columns">
+          <!-- Variables Bindings -->
+          <div class="btn-secondary" style="border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%;">
+            <h3 style="font-size: 1rem; color: white; margin-bottom: 1.25rem;">1. Bind Variables</h3>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="fruits">Fruits (comma-separated list, <code>fruits</code>)</label>
+              <input id="fruits" name="fruits" type="text" value="apple, banana, cherry" placeholder="e.g. apple, banana, cherry" />
+            </div>
+          </div>
+
+          <!-- Playground Template -->
+          <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0;">
+            <label for="playground_template" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: white; font-weight: 700;">2. Glimmer Template</span>
+            </label>
+            <textarea id="playground_template" name="playground_template" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.85rem; min-height: 180px;" required>Fruits list:
+&#123;&#123;- each fruit in fruits &#125;&#125;
+  - &#123;fruit&#125;
+&#123;&#123;- end &#125;&#125;
+Done!</textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-playground-submit" style="width: 100%; margin-top: 1.5rem;">Render Template</button>
+      </form>
+
+      <!-- Terminal Output -->
+      <div style="margin-top: 2rem;">
+        <h3 style="font-size: 1rem; color: white; margin-bottom: 0.75rem;">3. Live Render Output</h3>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">glimmer-whitespace-renderer</span>
+          </div>
+          <div id="playground-result" class="terminal-body" style="background-color: #050b18; min-height: 180px; white-space: pre; padding: 1.25rem; color: var(--text-primary); font-family: var(--font-mono);">
+            <div style="color: var(--text-secondary); text-align: center; padding-top: 3.5rem;">Modify any input or template above to trigger rendering!</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Syntax Reference -->
+    <section style="margin-bottom: 3rem;">
+      <h2 style="font-size: 1.5rem; color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background-color: var(--primary); border-radius: 4px; display: inline-block;"></span>
+        Whitespace Syntax Reference
+      </h2>
+      
+      <div class="concept-grid">
+        <article class="card explorer-card">
+          <div class="explorer-title-area" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h3 style="margin: 0; font-size: 1.1rem; color: white;">Left Trim Delimiter</h3>
+            <span class="badge badge-info explorer-badge"><code>&#123;&#123;-</code></span>
+          </div>
+          <p class="explorer-desc">Tells the parser to search the static text directly on the left of this block tag and trim all its trailing whitespace.</p>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h3 style="margin: 0; font-size: 1.1rem; color: white;">Right Trim Delimiter</h3>
+            <span class="badge badge-info explorer-badge"><code>-&#125;&#125;</code></span>
+          </div>
+          <p class="explorer-desc">Tells the parser to search the static text directly on the right of this block tag and trim all its leading whitespace.</p>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h3 style="margin: 0; font-size: 1.1rem; color: white;">Block-only Rules</h3>
+            <span class="badge badge-warning explorer-badge">delimiters</span>
+          </div>
+          <p class="explorer-desc">Whitespace control is supported on double-brace block tags (like <code>if</code>, <code>each</code>, <code>end</code>, <code>include</code>, <code>fill</code>, etc.), avoiding expression conflicts in variables.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>Eiffel Web Framework &amp; Glimmer Template Engine Demo</div>
+  </footer>
+
+  <!-- Scenario Loader Script -->
+  <script>
+    const scenarios = {
+      loop_no_trim: {
+        fruits: "apple, banana, cherry",
+        playground: `Fruits list:
+\x7b\x7b each fruit in fruits \x7d\x7d
+  - \x7bfruit\x7d
+\x7b\x7b end \x7d\x7d
+Done!`
+      },
+      loop_with_trim: {
+        fruits: "apple, banana, cherry",
+        playground: `Fruits list:
+\x7b\x7b- each fruit in fruits \x7d\x7d
+  - \x7bfruit\x7d
+\x7b\x7b- end \x7d\x7d
+Done!`
+      },
+      full_trim: {
+        fruits: "apple, banana, cherry",
+        playground: `Fruits list: \x7b\x7b- each fruit in fruits -\x7d\x7d\x7bfruit\x7d, \x7b\x7b- end -\x7d\x7d done!`
+      }
+    };
+
+    function loadScenario(name, event) {
+      const s = scenarios[name];
+      if (!s) return;
+      document.getElementById('fruits').value = s.fruits;
+      document.getElementById('playground_template').value = s.playground;
+      
+      // Update active button styles
+      const buttons = document.querySelectorAll('.scenarios-bar button');
+      buttons.forEach(btn => {
+        btn.style.backgroundColor = 'var(--btn-secondary-bg, rgba(255,255,255,0.05))';
+        btn.style.color = 'var(--text-secondary)';
+      });
+      
+      const activeBtn = event ? event.currentTarget : null;
+      if (activeBtn) {
+        activeBtn.style.backgroundColor = 'var(--primary)';
+        activeBtn.style.color = 'white';
+      }
+
+      // Trigger HTMX rendering automatically
+      htmx.trigger('#playground-form', 'submit');
+    }
+
+    // Auto-load the first scenario on page load
+    window.onload = function() {
+      // Highlight the first button as active
+      const firstBtn = document.querySelector('.scenarios-bar button');
+      if (firstBtn) {
+        firstBtn.style.backgroundColor = 'var(--primary)';
+        firstBtn.style.color = 'white';
+      }
+      loadScenario('loop_no_trim');
+    };
+  </script>
+</body>
+
+</html>

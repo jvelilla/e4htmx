@@ -133,7 +133,7 @@ feature -- Response Rendering
 		local
 			l_conv: UTF_CONVERTER
 		do
-			headers.put_content_type_text_html
+			headers.put_content_type ("text/html; charset=utf-8")
 			send (l_conv.utf_32_string_to_utf_8_string_8 (a_html))
 		end
 
@@ -142,7 +142,7 @@ feature -- Response Rendering
 		local
 			l_conv: UTF_CONVERTER
 		do
-			headers.put_content_type_text_plain
+			headers.put_content_type ("text/plain; charset=utf-8")
 			send (l_conv.utf_32_string_to_utf_8_string_8 (a_text))
 		end
 
