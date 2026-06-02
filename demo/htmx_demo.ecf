@@ -21,6 +21,7 @@
 		<library name="glimmer" location="..\glimmer\glimmer.ecf" readonly="false"/>
 		<library name="ewf_glimmer" location="..\ewf_glimmer\ewf_glimmer.ecf" readonly="false"/>
 		<library name="uuid" location="$ISE_LIBRARY\library\uuid\uuid.ecf"/>
+		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
 		<library name="wsf" location="$ISE_LIBRARY\contrib\library\web\framework\ewf\wsf\wsf.ecf">
 			<option warning="none"/>
 		</library>

@@ -75,6 +75,18 @@ feature -- Router
 			map_uri_agent ("/event-with-string", agent handle_event_with_string, router.methods_GET)
 			map_uri_agent ("/event-with-object", agent handle_event_with_object, router.methods_GET)
 			map_uri_agent ("/trigger", agent handle_trigger, router.methods_GET)
+			map_uri_agent ("/filters-demo", agent handle_filters_demo, router.methods_GET)
+			map_uri_agent ("/filters-demo/render", agent handle_filters_playground_render, router.methods_POST)
+			map_uri_agent ("/dbc-demo", agent handle_dbc_demo, router.methods_GET)
+			map_uri_agent ("/dbc-demo/render", agent handle_dbc_playground_render, router.methods_POST)
+			map_uri_agent ("/components-demo", agent handle_components_demo, router.methods_GET)
+			map_uri_agent ("/components-demo/render", agent handle_components_playground_render, router.methods_POST)
+			map_uri_agent ("/slots-demo", agent handle_slots_demo, router.methods_GET)
+			map_uri_agent ("/slots-demo/render", agent handle_slots_playground_render, router.methods_POST)
+			map_uri_agent ("/inheritance-demo", agent handle_inheritance_demo, router.methods_GET)
+			map_uri_agent ("/inheritance-demo/render", agent handle_inheritance_playground_render, router.methods_POST)
+			map_uri_agent ("/whitespace-demo", agent handle_whitespace_demo, router.methods_GET)
+			map_uri_agent ("/whitespace-demo/render", agent handle_whitespace_playground_render, router.methods_POST)
 
 			create www.make_with_path (document_root)
 			www.set_directory_index (<<"index2.html">>)
@@ -574,6 +586,728 @@ feature -- HTML Generation
 				</body>
 				</html>
 			]").to_string_8
+		end
+
+feature -- Glimmer Filters Demo Event Handlers
+
+	handle_filters_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer filters and helpers showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_date: DATE
+			l_datetime: DATE_TIME
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Register custom helper agents
+			l_template.register_helper ("gravatar_url", agent gravatar_url)
+			l_template.register_helper ("status_badge", agent status_badge)
+			l_template.register_helper ("slugify", agent slugify)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Filters & Helpers Showcase")
+			l_template.set_variable ("user_name", "Javier")
+			l_template.set_variable ("email", "javier@eiffel.org")
+			l_template.set_variable ("balance", 12500.75)
+			
+			create l_date.make (2026, 5, 31)
+			create l_datetime.make (2026, 5, 31, 12, 30, 0)
+			l_template.set_variable ("created_at", l_datetime)
+			l_template.set_variable ("created_at_raw", l_datetime.out.to_string_32)
+			l_template.set_variable ("score", 94.5678)
+			l_template.set_variable ("status", "active")
+			l_template.set_variable ("description", "The Glimmer template engine is now equipped with powerful built-in formatting filters and agent-based custom helpers. Try them out!")
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("filters_demo.html").name)
+		end
+
+	handle_filters_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from playground form to dynamically compile and render template
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_text: STRING_32
+			l_price: REAL_64
+			l_email: STRING_32
+			l_score: REAL_64
+			l_status: STRING_32
+			l_date_str: STRING_32
+			l_tpl_str: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			if attached c.form_value ("val_text") as t then
+				l_text := t
+			else
+				l_text := "Eiffel Web Framework rules"
+			end
+			
+			if attached c.form_value ("val_price") as p and then p.is_double then
+				l_price := p.to_double
+			else
+				l_price := 489.95
+			end
+			
+			if attached c.form_value ("val_email") as e then
+				l_email := e
+			else
+				l_email := "javier@eiffel.org"
+			end
+
+			if attached c.form_value ("val_score") as s and then s.is_double then
+				l_score := s.to_double
+			else
+				l_score := 94.5678
+			end
+
+			if attached c.form_value ("val_status") as st then
+				l_status := st
+			else
+				l_status := "active"
+			end
+
+			if attached c.form_value ("val_date") as dt then
+				l_date_str := dt
+			else
+				l_date_str := "2026-05-31T12:30"
+			end
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := "Hello {val_text | upper}! Price: {val_price | currency: %"USD%"}"
+			end
+			
+			create l_template.make
+			
+			-- Register custom helper agents
+			l_template.register_helper ("gravatar_url", agent gravatar_url)
+			l_template.register_helper ("status_badge", agent status_badge)
+			l_template.register_helper ("slugify", agent slugify)
+			
+			-- Set template variables
+			l_template.set_variable ("val_text", l_text)
+			l_template.set_variable ("val_price", l_price)
+			l_template.set_variable ("val_email", l_email)
+			l_template.set_variable ("val_score", l_score)
+			l_template.set_variable ("val_status", l_status)
+			l_template.set_variable ("val_date", parse_datetime (l_date_str))
+			
+			-- Render playground content
+			c.render (l_template, l_tpl_str)
+		end
+
+feature -- Template Helpers
+
+	gravatar_url (a_val: detachable ANY): STRING_32
+			-- Generate a Dicebear robot avatar SVG URL based on input email `a_val`
+		local
+			l_email: STRING_32
+		do
+			if attached a_val as v then
+				l_email := v.out.to_string_32
+				l_email.left_adjust
+				l_email.right_adjust
+				Result := "https://api.dicebear.com/7.x/bottts/svg?seed=" + l_email
+			else
+				Result := "https://api.dicebear.com/7.x/bottts/svg?seed=default"
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	status_badge (a_val: detachable ANY): STRING_32
+			-- Convert a status string `a_val` into a styled HTML badge span
+		local
+			l_status: STRING_32
+		do
+			if attached a_val as v then
+				l_status := v.out.to_string_32
+				l_status.left_adjust
+				l_status.right_adjust
+				l_status.to_lower
+				
+				if l_status.same_string ("active") or l_status.same_string ("completed") or l_status.same_string ("success") then
+					Result := "<span class=%"badge badge-success%">" + l_status + "</span>"
+				elseif l_status.same_string ("pending") or l_status.same_string ("warning") then
+					Result := "<span class=%"badge badge-warning%">" + l_status + "</span>"
+				elseif l_status.same_string ("inactive") or l_status.same_string ("failed") or l_status.same_string ("error") then
+					Result := "<span class=%"badge badge-danger%">" + l_status + "</span>"
+				else
+					Result := "<span class=%"badge badge-info%">" + l_status + "</span>"
+				end
+			else
+				Result := "<span class=%"badge badge-muted%">unknown</span>"
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	slugify (a_val: detachable ANY): STRING_32
+			-- Convert text `a_val` into a URL-friendly lowercase-hyphenated slug
+		local
+			l_str: STRING_32
+			i: INTEGER
+			c: CHARACTER_32
+		do
+			if attached a_val as v then
+				l_str := v.out.to_string_32
+				l_str.left_adjust
+				l_str.right_adjust
+				l_str.to_lower
+				
+				create Result.make (l_str.count)
+				from
+					i := 1
+				until
+					i > l_str.count
+				loop
+					c := l_str.item (i)
+					if c.is_alpha_numeric then
+						Result.append_character (c)
+					elseif c = ' ' or c = '-' or c = '_' then
+						if not Result.is_empty and then Result.item (Result.count) /= '-' then
+							Result.append_character ('-')
+						end
+					end
+					i := i + 1
+				end
+			else
+				create Result.make_empty
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	parse_datetime (a_str: READABLE_STRING_GENERAL): DATE_TIME
+			-- Parse "yyyy-MM-ddTHH:mm" format into DATE_TIME
+		local
+			l_str: STRING_32
+			y, m, d, h, min: INTEGER
+		do
+			l_str := a_str.to_string_32
+			l_str.left_adjust
+			l_str.right_adjust
+			if l_str.count >= 16 and then l_str.item (5) = '-' and then l_str.item (8) = '-' and then (l_str.item (11) = 'T' or l_str.item (11) = ' ') and then l_str.item (14) = ':' then
+				y := l_str.substring (1, 4).to_integer
+				m := l_str.substring (6, 7).to_integer
+				d := l_str.substring (9, 10).to_integer
+				h := l_str.substring (12, 13).to_integer
+				min := l_str.substring (15, 16).to_integer
+				if m >= 1 and m <= 12 and d >= 1 and d <= 31 and h >= 0 and h <= 23 and min >= 0 and min <= 59 then
+					create Result.make (y, m, d, h, min, 0)
+				else
+					create Result.make (2026, 6, 1, 12, 0, 0)
+				end
+			else
+				create Result.make (2026, 6, 1, 12, 0, 0)
+			end
+		ensure
+			result_attached: Result /= Void
+		end
+
+	handle_dbc_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer DbC and playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_user: USER_PROFILE
+			l_skills: ARRAYED_LIST [STRING_32]
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Enable contract mode by default for playground showcase
+			l_template.set_contract_mode (True)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Design by Contract Playground")
+			l_template.set_variable ("username", "Javier")
+			l_template.set_variable ("age", 30)
+			l_template.set_variable ("is_admin", True)
+			
+			create l_user.make ("Javier", 30, True)
+			l_template.set_variable ("user", l_user)
+			
+			create l_skills.make (3)
+			l_skills.extend ("Eiffel")
+			l_skills.extend ("HTMX")
+			l_skills.extend ("Glimmer")
+			l_template.set_variable ("skills", l_skills)
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("dbc_demo.html").name)
+		end
+
+	handle_dbc_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from DbC playground to compile and render template
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_username: detachable STRING_32
+			l_age: INTEGER
+			l_is_admin: BOOLEAN
+			l_contract_mode: BOOLEAN
+			l_validation_mode: BOOLEAN
+			l_tpl_str: STRING_32
+			l_user: USER_PROFILE
+			l_skills: ARRAYED_LIST [STRING_32]
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_username := c.form_value ("username")
+			if l_username /= Void then
+				l_username.left_adjust
+				l_username.right_adjust
+			end
+			
+			if attached c.form_value ("age") as a and then a.is_integer then
+				l_age := a.to_integer
+			else
+				l_age := 0
+			end
+			
+			l_is_admin := c.form_value ("is_admin") /= Void
+			l_contract_mode := c.form_value ("contract_mode") /= Void
+			l_validation_mode := c.form_value ("validation_mode") /= Void
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := "Hello {username}!"
+			end
+			
+			-- 1. Input Validation Phase (Boundary check in controller)
+			if l_validation_mode then
+				if l_username = Void or else l_username.is_empty then
+					c.set_status ({HTTP_STATUS_CODE}.ok) -- user error is handled flow, 200 OK
+					c.html ("[
+						<div class="validation-error-banner" style="background-color: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 1.25rem; border-radius: var(--radius-md); color: #fcd34d;">
+							<h4 style="margin: 0 0 0.5rem 0; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #f59e0b; display: flex; align-items: center; gap: 0.5rem;">
+								<span>⚠️</span> User Input Validation Error (Soft Flow)
+							</h4>
+							<p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+								<strong>Validation failure:</strong> Username is a required field and cannot be blank.
+							</p>
+							<p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+								<em>Eiffel Controller:</em> "We intercepted the user error at the boundary. We will NOT attempt to render the contracted template because the required data is missing. This is a clean input validation flow."
+							</p>
+						</div>
+					]")
+				elseif l_age < 18 then
+					c.set_status ({HTTP_STATUS_CODE}.ok)
+					c.html ("[
+						<div class="validation-error-banner" style="background-color: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 1.25rem; border-radius: var(--radius-md); color: #fcd34d;">
+							<h4 style="margin: 0 0 0.5rem 0; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: #f59e0b; display: flex; align-items: center; gap: 0.5rem;">
+								<span>⚠️</span> User Input Validation Error (Soft Flow)
+							</h4>
+							<p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+								<strong>Validation failure:</strong> Registration is restricted to age 18 or above (Provided: " + l_age.out + ").
+							</p>
+							<p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+								<em>Eiffel Controller:</em> "We intercepted the user error at the boundary. We will NOT attempt to render the contracted template because the precondition age >= 18 is not met by the input. This is a clean input validation flow."
+							</p>
+						</div>
+					]")
+				else
+					-- Proceed with valid inputs
+					create l_template.make
+					l_template.set_contract_mode (l_contract_mode)
+					
+					l_template.set_variable ("username", l_username)
+					create l_user.make (l_username, l_age, l_is_admin)
+					l_template.set_variable ("user", l_user)
+					l_template.set_variable ("age", l_age)
+					l_template.set_variable ("is_admin", l_is_admin)
+					
+					create l_skills.make (3)
+					l_skills.extend ("Eiffel")
+					l_skills.extend ("HTMX")
+					l_skills.extend ("Glimmer")
+					l_template.set_variable ("skills", l_skills)
+					
+					c.render (l_template, l_tpl_str)
+				end
+			else
+				-- 2. No Input Validation (Direct contract invocation - simulates developer oversight)
+				create l_template.make
+				l_template.set_contract_mode (l_contract_mode)
+				
+				-- If username is not empty, set it (otherwise leave it out to trigger presence check)
+				if l_username /= Void and then not l_username.is_empty then
+					l_template.set_variable ("username", l_username)
+					create l_user.make (l_username, l_age, l_is_admin)
+					l_template.set_variable ("user", l_user)
+				end
+				
+				l_template.set_variable ("age", l_age)
+				l_template.set_variable ("is_admin", l_is_admin)
+				
+				create l_skills.make (3)
+				l_skills.extend ("Eiffel")
+				l_skills.extend ("HTMX")
+				l_skills.extend ("Glimmer")
+				l_template.set_variable ("skills", l_skills)
+				
+				c.render (l_template, l_tpl_str)
+			end
+		end
+
+	handle_components_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer components and playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Enable contract mode by default for playground showcase
+			l_template.set_contract_mode (True)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Component Composition Playground")
+			l_template.set_variable ("user_name", "Javier")
+			l_template.set_variable ("user_role", "Architect")
+			l_template.set_variable ("company", "Eiffel Language Foundation")
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("components_demo.html").name)
+		end
+
+	handle_components_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from components playground to render template with custom component
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_user_name: detachable STRING_32
+			l_user_role: detachable STRING_32
+			l_company: detachable STRING_32
+			l_contract_mode: BOOLEAN
+			l_tpl_str: STRING_32
+			l_comp_tpl_str: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_user_name := c.form_value ("user_name")
+			if l_user_name /= Void then
+				l_user_name.left_adjust
+				l_user_name.right_adjust
+			end
+			
+			l_user_role := c.form_value ("user_role")
+			if l_user_role /= Void then
+				l_user_role.left_adjust
+				l_user_role.right_adjust
+			end
+			
+			l_company := c.form_value ("company")
+			if l_company /= Void then
+				l_company.left_adjust
+				l_company.right_adjust
+			end
+			
+			l_contract_mode := c.form_value ("contract_mode") /= Void
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := ""
+			end
+			
+			if attached c.form_value ("component_template") as comp_tpl then
+				l_comp_tpl_str := comp_tpl
+			else
+				l_comp_tpl_str := ""
+			end
+			
+			create l_template.make
+			l_template.set_contract_mode (l_contract_mode)
+			
+			-- Register the user's component template as a partial
+			l_template.register_partial ("user_badge", l_comp_tpl_str)
+			
+			-- Bind variables
+			if l_user_name /= Void and then not l_user_name.is_empty then
+				l_template.set_variable ("user_name", l_user_name)
+			end
+			if l_user_role /= Void and then not l_user_role.is_empty then
+				l_template.set_variable ("user_role", l_user_role)
+			end
+			if l_company /= Void and then not l_company.is_empty then
+				l_template.set_variable ("company", l_company)
+			end
+			
+			-- Render template
+			c.render (l_template, l_tpl_str)
+		end
+
+	handle_slots_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer slots and playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Enable contract mode by default for playground showcase
+			l_template.set_contract_mode (True)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Slot Composition Playground")
+			l_template.set_variable ("user_name", "Javier")
+			l_template.set_variable ("user_role", "Architect")
+			l_template.set_variable ("company", "Eiffel Language Foundation")
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("slots_demo.html").name)
+		end
+
+	handle_slots_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from slots playground to render template with custom component slots
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_user_name: detachable STRING_32
+			l_user_role: detachable STRING_32
+			l_company: detachable STRING_32
+			l_tpl_str: STRING_32
+			l_comp_tpl_str: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_user_name := c.form_value ("user_name")
+			if l_user_name /= Void then
+				l_user_name.left_adjust
+				l_user_name.right_adjust
+			end
+			
+			l_user_role := c.form_value ("user_role")
+			if l_user_role /= Void then
+				l_user_role.left_adjust
+				l_user_role.right_adjust
+			end
+			
+			l_company := c.form_value ("company")
+			if l_company /= Void then
+				l_company.left_adjust
+				l_company.right_adjust
+			end
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := ""
+			end
+			
+			if attached c.form_value ("component_template") as comp_tpl then
+				l_comp_tpl_str := comp_tpl
+			else
+				l_comp_tpl_str := ""
+			end
+			
+			create l_template.make
+			l_template.set_contract_mode (True)
+			
+			-- Register the user's component template as a partial
+			l_template.register_partial ("card_component", l_comp_tpl_str)
+			
+			-- Bind variables
+			if l_user_name /= Void and then not l_user_name.is_empty then
+				l_template.set_variable ("user_name", l_user_name)
+			end
+			if l_user_role /= Void and then not l_user_role.is_empty then
+				l_template.set_variable ("user_role", l_user_role)
+			end
+			if l_company /= Void and then not l_company.is_empty then
+				l_template.set_variable ("company", l_company)
+			end
+			
+			-- Render template
+			c.render (l_template, l_tpl_str)
+		end
+
+	handle_inheritance_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer template inheritance and playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Enable contract mode by default for playground showcase
+			l_template.set_contract_mode (True)
+
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Template Inheritance Playground")
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("inheritance_demo.html").name)
+		end
+
+	handle_inheritance_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from inheritance playground to render template with extends/block
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_author: detachable STRING_32
+			l_version: detachable STRING_32
+			l_theme: detachable STRING_32
+			l_base_layout: detachable STRING_32
+			l_mid_layout: detachable STRING_32
+			l_tpl_str: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_author := c.form_value ("author")
+			if l_author /= Void then
+				l_author.left_adjust
+				l_author.right_adjust
+			end
+			
+			l_version := c.form_value ("version")
+			if l_version /= Void then
+				l_version.left_adjust
+				l_version.right_adjust
+			end
+			
+			l_theme := c.form_value ("theme")
+			if l_theme /= Void then
+				l_theme.left_adjust
+				l_theme.right_adjust
+			end
+			
+			l_base_layout := c.form_value ("base_layout")
+			if l_base_layout /= Void then
+				l_base_layout.left_adjust
+				l_base_layout.right_adjust
+			end
+			
+			l_mid_layout := c.form_value ("mid_layout")
+			if l_mid_layout /= Void then
+				l_mid_layout.left_adjust
+				l_mid_layout.right_adjust
+			end
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := ""
+			end
+			
+			create l_template.make
+			l_template.set_contract_mode (True)
+			
+			-- Register partials if provided
+			if l_base_layout /= Void and then not l_base_layout.is_empty then
+				l_template.register_partial ("base_layout", l_base_layout)
+			end
+			if l_mid_layout /= Void and then not l_mid_layout.is_empty then
+				l_template.register_partial ("mid_layout", l_mid_layout)
+			end
+			
+			-- Bind variables
+			if l_author /= Void and then not l_author.is_empty then
+				l_template.set_variable ("author", l_author)
+			end
+			if l_version /= Void and then not l_version.is_empty then
+				l_template.set_variable ("version", l_version)
+			end
+			if l_theme /= Void and then not l_theme.is_empty then
+				l_template.set_variable ("theme", l_theme)
+			end
+			
+			-- Render template
+			c.render (l_template, l_tpl_str)
+		end
+
+	handle_whitespace_demo (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle GET request for Glimmer whitespace control playground showcase
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_items: ARRAYED_LIST [STRING_32]
+		do
+			create c.make (req, res)
+			create l_template.make
+			
+			-- Set template variables
+			l_template.set_variable ("app_title", "Glimmer Whitespace Control Playground")
+			create l_items.make (3)
+			l_items.extend ("apple")
+			l_items.extend ("banana")
+			l_items.extend ("cherry")
+			l_template.set_variable ("fruits", l_items)
+			
+			-- Render from template file
+			c.render_file (l_template, document_root.extended ("whitespace_demo.html").name)
+		end
+
+	handle_whitespace_playground_render (req: WSF_REQUEST; res: WSF_RESPONSE)
+			-- Handle POST request from whitespace playground to dynamically compile and render template
+		local
+			c: EWF_GLIMMER_CONTEXT
+			l_template: GLM_HTML_TEMPLATE
+			l_fruits_str: detachable STRING_32
+			l_items: ARRAYED_LIST [STRING_32]
+			l_tpl_str: STRING_32
+			l_pos, l_start: INTEGER
+			l_sub: STRING_32
+		do
+			create c.make (req, res)
+			
+			-- Retrieve and sanitize inputs
+			l_fruits_str := c.form_value ("fruits")
+			create l_items.make (5)
+			if l_fruits_str /= Void and then not l_fruits_str.is_empty then
+				from
+					l_start := 1
+					l_pos := l_fruits_str.substring_index (",", l_start)
+				until
+					l_pos = 0
+				loop
+					l_sub := l_fruits_str.substring (l_start, l_pos - 1)
+					l_sub.left_adjust
+					l_sub.right_adjust
+					if not l_sub.is_empty then
+						l_items.extend (l_sub)
+					end
+					l_start := l_pos + 1
+					l_pos := l_fruits_str.substring_index (",", l_start)
+				end
+				l_sub := l_fruits_str.substring (l_start, l_fruits_str.count)
+				l_sub.left_adjust
+				l_sub.right_adjust
+				if not l_sub.is_empty then
+					l_items.extend (l_sub)
+				end
+			else
+				l_items.extend ("apple")
+				l_items.extend ("banana")
+				l_items.extend ("cherry")
+			end
+			
+			if attached c.form_value ("playground_template") as tpl then
+				l_tpl_str := tpl
+			else
+				l_tpl_str := ""
+			end
+			
+			create l_template.make
+			l_template.set_variable ("fruits", l_items)
+			
+			-- Render template
+			c.render (l_template, l_tpl_str)
 		end
 
 end

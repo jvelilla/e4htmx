@@ -1,0 +1,17 @@
+{{each pokemon in pokemon_list}}
+<tr
+  {{if is_last}}
+  hx-trigger="revealed"
+  hx-get="/pokemon-rows?page={next_page}"
+  hx-indicator=".htmx-indicator"
+  hx-swap="afterend"
+  {{end}}
+  class="fade-in-row"
+>
+  <td><span class="user-id-badge">#{pokemon.id}</span></td>
+  <td><span class="user-name">{pokemon.name}</span></td>
+  <td style="text-align: center;">
+    <img class="pokemon-sprite" alt="{pokemon.name}" src="{pokemon.image_url}" />
+  </td>
+</tr>
+{{end}}

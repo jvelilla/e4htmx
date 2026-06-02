@@ -1,102 +1,131 @@
-# EWF with HTMX Integration Demo
+# EWF with HTMX & Glimmer Integration Demo
 
-This project demonstrates the integration of [Eiffel Web Framework (EWF)](https://github.com/EiffelWebFramework/EWF) with [HTMX](https://htmx.org/), combining Eiffel's robust backend capabilities with HTMX's modern frontend interactivity.
+This project demonstrates the integration of the [Eiffel Web Framework (EWF)](https://github.com/EiffelWebFramework/EWF) with [HTMX](https://htmx.org/) and the **Glimmer Template Engine**, combining Eiffel's robust backend capabilities with HTMX's modern frontend interactivity.
 
 ## Project Structure 
 
 ```
 .
 ├── src/
-│ ├── htmx_demo.e         # Main application service
-│ └── htmx_demo_execution.e # Request execution handling
+│   ├── dog.e                  # Dog domain model
+│   ├── htmx_demo.e            # Main application launcher
+│   ├── htmx_demo_execution.e  # EWF request router & event handlers
+│   └── shared_services.e      # In-memory shared database state
 ├── www/
-│ ├── index.html          # Main HTML file
-│ └── styles.css          # Application styles
-└── htmx_demo.ecf         # Eiffel configuration file
+│   ├── index.html             # Basic fallback HTML file
+│   ├── index2.html            # Redesigned Dogs CRUD frontend
+│   ├── filters_demo.html      # Educational filters & helpers template
+│   ├── dbc_demo.html          # Design by Contract playground
+│   ├── components_demo.html   # Component composition sandbox
+│   ├── slots_demo.html        # Slots & content projection sandbox
+│   └── styles.css             # Premium dark-theme stylesheet
+└── htmx_demo.ecf              # Eiffel configuration file (targets & libraries)
 ```
 
-## Overview
+## Features
 
 This application demonstrates how to:
-- Set up an EWF server that can handle HTMX requests
-- Serve dynamic content using Eiffel's backend capabilities
-- Use HTMX attributes for dynamic frontend updates without JavaScript
+- Set up an EWF server that can handle HTMX requests.
+- Serve dynamic content and HTML templates utilizing Glimmer.
+- Use HTMX attributes for real-time frontend updates (CRUD + inline deletions) without writing custom JavaScript.
+- Apply Glimmer's **built-in filters** and **custom Eiffel agents** as template formatting helper pipelines.
+- Support **Component Model (Composition)** with parameterized includes, variable scope isolation, and DbC preconditions.
+- Support **Slots and Content Projection** via named `{{slot}}` blocks filled by nested `{{fill}}` elements.
+- Build interactive, live-reloading playgrounds that parse and render Glimmer templates on-the-fly.
 
-## HTMX Integration Details
+---
 
-### Current Implementation
-Our demo currently uses these HTMX features:
+## Interactive Pages
 
-1. **Requests via Attributes**: Using `hx-get` attribute to make HTTP requests:
-   ```html
-   <button hx-get="/version" hx-target="#version">Get EWF Version</button>
-   ```
-   - `hx-get`: Makes a GET request to `/version` endpoint
-   - `hx-target`: Specifies where to put the response (#version div)
+The application serves two main interactive routes:
 
-2. **Dynamic Content Updates**: The response from the server replaces the content of the target div without a full page reload
+### 1. Dogs Database CRUD (`/`)
+- A beautiful dark-theme table displaying dog names and breeds.
+- Add new dogs dynamically via a card form (`hx-post="/dog"`), which prepends new rows instantly.
+- Delete dogs inline using a confirmation overlay (`hx-delete="/dog/{id}"` with `hx-confirm`).
 
-### How It Works
+### 2. Filters & Helpers Showcase (`/filters-demo`)
+- **Educational Grid**: Interactive cards displaying and explaining built-in formatting filters:
+  - Text Cases: `{user_name | upper}`, `{user_name | lower}`
+  - String Truncating: `{description | truncate: 45}`
+  - Date and Time formatting: `{created_at | date_format: "dd/MM/yyyy"}`
+  - Floating decimals: `{score | number_format: 2}`
+  - Currency representation: `{balance | currency: "USD"}` or `{balance | currency: "EUR"}`
+  - Filter chaining: `{user_name | lower | truncate: 4}`
+- **Custom Eiffel Agents**: Visual showcases of user-registered agent helpers:
+  - `gravatar_url`: Maps email to a Dicebear robot SVG URL (`{email | gravatar_url}`).
+  - `status_badge`: Converts raw text statuses into color-coded HTML status pills (`{raw:status | status_badge}`).
+  - `slugify`: Converts titles to URL-safe hyphenated slugs (`{app_title | slugify}`).
+- **Interactive Live Playground**: An inline form where you can edit variables and write a custom Glimmer template. As you type, HTMX triggers a POST request to `/filters-demo/render` which renders the template dynamically and displays the result inside a terminal container.
 
-1. **Frontend (HTMX)**:
-   - HTMX is included via CDN: `htmx.org@2.0.0`
-   - HTML elements use HTMX attributes to declare behavior
-   - No custom JavaScript required
+### 3. Design by Contract Sandbox (`/dbc-demo`)
+- Experiment with preconditions (`{{require}}`) and inline inspection (`{dump}`, `{dump_context}`).
+- Verify development (fails-fast with 422 on breach) vs. production lifecycle modes.
 
-2. **Backend (EWF)**:
-   - EWF handles the HTMX requests like regular HTTP requests
-   - Returns HTML fragments instead of full pages
-   - Responses are automatically inserted into the DOM by HTMX
+### 4. Component Composition Playground (`/components-demo`)
+- **Isolated Context**: Try out parameterized includes (`{{include component with param=val}}`) and witness that parent context variables do not leak into the component.
+- **Dynamic Sandboxing**: Edit both the sub-component template and the calling page template in real-time.
+- **DbC boundaries**: Toggle required component inputs to trigger fast-failing preconditions.
+
+### 5. Component Slots Playground (`/slots-demo`)
+- **Content Projection**: Try out template slots (`{{slot slot_name}}`) filled dynamically from the caller using fill blocks (`{{fill slot_name}}...{{end}}`).
+- **4 Practice Scenarios**: Practice slots step-by-step with 1-click loading scenarios:
+  1. *Basic Card:* Learn card content projection.
+  2. *Alert Banner:* Project icons and success alert messages.
+  3. *Scoped Isolation:* Verify that slot variables are strictly isolated and resolve safely without context bleed.
+  4. *Missing Fills:* See how unfilled slots evaluate safely to empty strings.
+- **Interactive Sandbox & Terminal**: Edit the parent variables, slot-component template, and calling template code. Watch the layout re-compile and display in the retro terminal output dynamically.
+
+---
 
 ## Getting Started
 
 ### Prerequisites
-
-- Eiffel Studio (latest version recommended)
+- Eiffel Studio (v24.11+ / v25.12+ recommended)
 - EWF library
-- HTMX (included via CDN)
+- HTMX (loaded via CDN)
 
 ### Running the Application
 
-1. Compile the project:
+1. Compile the project using the Eiffel compiler:
    ```bash
-   ec -config htmx_demo.ecf
+   ec -config htmx_demo.ecf -target htmx_demo -clean -batch
    ```
 
-2. Run the compiled executable. The server will start on port 9090.
+2. Perform the C compilation (freeze):
+   On Windows, run the `finish_freezing` command in the generated code directory:
+   ```bash
+   cd EIFGENs\htmx_demo\W_code
+   finish_freezing
+   ```
 
-3. Access the application at `http://localhost:9090`
+3. Run the compiled executable from the `demo/` subdirectory to ensure static assets are loaded correctly:
+   ```bash
+   cd ..\..\..   # navigate back to demo/ directory
+   EIFGENs\htmx_demo\W_code\htmx_demo.exe
+   ```
+   *The server will start on port **9999** by default.*
 
-## Technical Details
+4. Access the application at:
+    - Dashboard: [http://localhost:9999/](http://localhost:9999/)
+    - Filters Showcase: [http://localhost:9999/filters-demo](http://localhost:9999/filters-demo)
+    - DbC Playground: [http://localhost:9999/dbc-demo](http://localhost:9999/dbc-demo)
+    - Components Playground: [http://localhost:9999/components-demo](http://localhost:9999/components-demo)
+    - Slots Playground: [http://localhost:9999/slots-demo](http://localhost:9999/slots-demo)
 
-### Backend (EWF)
+## Technical Integration
 
-The application uses EWF's `WSF_LAUNCHABLE_SERVICE` to create a web server that:
-- Handles both standard HTTP requests and HTMX-specific requests
-- Returns appropriate HTML fragments for HTMX requests
-- Runs on port 9090 with verbose logging enabled
+### EWF Glimmer Context (`EWF_GLIMMER_CONTEXT`)
+The application uses the `EWF_GLIMMER_CONTEXT` to process requests:
+- **`c.form_value ("key")`**: Extracts form-data inputs cleanly.
+- **`c.render (template, text)`**: Renders string templates.
+- **`c.render_file (template, path)`**: Loads template files, binds context variables, and returns layout-integrated HTML with appropriate headers.
 
-### Frontend (HTMX Features Available)
-
-HTMX provides several powerful features we can utilize:
-- **HTTP Verbs**: Beyond GET/POST (PUT, PATCH, DELETE)
-- **Triggers**: Various events can trigger requests (click, change, submit, etc.)
-- **Targets**: Control where responses are inserted in the DOM
-- **Indicators**: Loading states and progress updates
-- **Validation**: Client-side validation with server round-trips
-- **WebSockets**: Real-time updates (available but not implemented in demo)
-
-## Planned Enhancements
-
-Future versions of this demo could showcase:
-1. Form submissions with `hx-post`
-2. Validation feedback
-3. Progress indicators
-4. WebSocket integration
-5. CSS transitions
-
-## Resources
-
-- [HTMX Documentation](https://htmx.org/documentation/)
-- [Eiffel Web Framework Documentation](https://github.com/EiffelWebFramework/EWF)
-- [HTMX Examples](https://htmx.org/examples/)
+### Custom Helper Registration
+In `htmx_demo_execution.e`, custom helpers are bound as Eiffel agent functions:
+```eiffel
+l_template.register_helper ("gravatar_url", agent gravatar_url)
+l_template.register_helper ("status_badge", agent status_badge)
+l_template.register_helper ("slugify", agent slugify)
+```
+These agents are invoked dynamically by Glimmer whenever the filter name is matched in a template placeholder.

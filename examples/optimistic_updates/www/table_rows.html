@@ -1,0 +1,14 @@
+{{each dog in dogs}}
+<tr>
+    <td>{dog.breed}</td>
+    <td
+        class="center heart-cell"
+        hx-put="/dog/{dog.breed}"
+        hx-target="this"
+        hx-indicator="#loading-indicator"
+        hx-on:click="optimisticLike(event)"
+    >
+        {raw:dog.heart_html}
+    </td>
+</tr>
+{{end}}

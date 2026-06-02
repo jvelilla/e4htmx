@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>HTMX Optimistic Updates - Eiffel & Glimmer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+    <script>
+        function optimisticLike(event) {
+            const td = event.currentTarget; // Use currentTarget to guarantee the td element itself
+            // Replace the text with the pink heart emoji.
+            //td.innerHTML = '&#x1F496;';
+            td.innerHTML = "&#x1F49A;";
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Dogs Breed Directory</h1>
+            <p class="subtitle">Click the heart to like or unlike a breed. The heart changes to pink instantly before
+                server confirmation!</p>
+        </header>
+
+        <div class="table-card">
+            <table hx-get="/table-rows" hx-target="tbody" hx-trigger="revealed">
+                <thead>
+                    <tr>
+                        <th>Breed</th>
+                        <th class="center">Like?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="2" class="loading-placeholder">Loading breeds...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="indicator-wrapper">
+            <div id="loading-indicator" class="htmx-indicator">
+                <div class="spinner"></div>
+                <span>Syncing with server...</span>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design by Contract - Glimmer Template Engine</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <style>
+    /* Styling for Developer DbC Contract Violations (Hard Errors) */
+    .error {
+      background-color: rgba(239, 68, 68, 0.08) !important;
+      border: 1px solid rgba(239, 68, 68, 0.2) !important;
+      padding: 1.25rem !important;
+      border-radius: var(--radius-md) !important;
+      color: #fca5a5 !important;
+      font-family: var(--font-sans) !important;
+      margin-bottom: 1rem;
+    }
+    .error::before {
+      content: "💥 CRITICAL: Developer Precondition Bug Detected (HTTP 422)";
+      display: block;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #ef4444;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Styling for Paradigm Comparison Cards */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    @media (min-width: 768px) {
+      .comparison-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    .paradigm-card {
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+    }
+
+    .paradigm-card.validation {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, rgba(245, 158, 11, 0.01) 100%);
+      border-color: rgba(245, 158, 11, 0.15);
+    }
+    .paradigm-card.validation:hover {
+      border-color: rgba(245, 158, 11, 0.3);
+      box-shadow: 0 4px 20px rgba(245, 158, 11, 0.05);
+    }
+
+    .paradigm-card.dbc {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, rgba(239, 68, 68, 0.01) 100%);
+      border-color: rgba(239, 68, 68, 0.15);
+    }
+    .paradigm-card.dbc:hover {
+      border-color: rgba(239, 68, 68, 0.3);
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.05);
+    }
+
+    .paradigm-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      font-family: var(--font-display);
+    }
+
+    .paradigm-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.7rem;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .paradigm-bullet {
+      margin-top: 1rem;
+      padding-left: 1.25rem;
+      list-style-type: none;
+    }
+    .paradigm-bullet li {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      position: relative;
+    }
+    .paradigm-bullet li::before {
+      content: "→";
+      position: absolute;
+      left: -1.25rem;
+      font-weight: bold;
+    }
+    .validation .paradigm-bullet li::before { color: var(--warning); }
+    .dbc .paradigm-bullet li::before { color: var(--danger); }
+  </style>
+</head>
+
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">G</div>
+        <span class="brand-text">Glimmer Engine</span>
+      </a>
+      <nav class="nav-menu">
+        <a href="/" class="nav-link">Dogs CRUD</a>
+        <a href="/filters-demo" class="nav-link">Filters &amp; Helpers</a>
+        <a href="/dbc-demo" class="nav-link active">Design by Contract</a>
+        <a href="/components-demo" class="nav-link">Components</a>
+        <a href="/slots-demo" class="nav-link">Slots</a>
+        <a href="/inheritance-demo" class="nav-link">Inheritance</a>
+        <a href="/whitespace-demo" class="nav-link">Whitespace</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    <h1 class="gradient-text">Glimmer Templates: Pragmatic DbC</h1>
+    <p class="subtitle">Eiffel's Design by Contract (DbC) principles map beautifully to template rendering. Enforce variable preconditions before rendering begins and inspect active scopes dynamically during development.</p>
+
+    <!-- Paradigm Explanation Section -->
+    <section style="margin-bottom: 2.5rem;">
+      <h2 style="font-size: 1.3rem; color: white; margin-bottom: 1.25rem; font-family: var(--font-display); display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 6px; height: 1.3rem; background-color: var(--primary); border-radius: 3px; display: inline-block;"></span>
+        The Core Intent: Defensive vs. Assertive
+      </h2>
+      <div class="comparison-grid">
+        <!-- Input Validation Card -->
+        <article class="paradigm-card validation">
+          <div class="paradigm-header" style="color: var(--warning);">
+            <span>🛡️</span> Input Validation (Defensive)
+          </div>
+          <div class="paradigm-badge" style="background-color: var(--warning-bg); color: #fcd34d; border: 1px solid var(--warning-border);">
+            External Trust (Boundary checks)
+          </div>
+          <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.75rem; line-height: 1.55;">
+            Assumes the incoming data is untrusted, hostile, or messy. It is designed to filter out bad user input, malicious payloads, or simple typos (e.g., checking if an email has an @ symbol). It expects failures as a normal part of daily operations.
+          </p>
+          <ul class="paradigm-bullet">
+            <li><strong>Normal Flow:</strong> User errors are routine; the application stays running.</li>
+            <li><strong>Response:</strong> Return soft, friendly error messages to let the user correct their input.</li>
+            <li><strong>Eiffel Principle:</strong> Intercept errors at the boundary. The backend routine is <em>never called</em> with invalid data.</li>
+          </ul>
+        </article>
+
+        <!-- Design by Contract Card -->
+        <article class="paradigm-card dbc">
+          <div class="paradigm-header" style="color: var(--danger);">
+            <span>💥</span> Design by Contract (Assertive)
+          </div>
+          <div class="paradigm-badge" style="background-color: var(--danger-bg); color: #fca5a5; border: 1px solid var(--danger-border);">
+            Internal Trust (API preconditions)
+          </div>
+          <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.75rem; line-height: 1.55;">
+            Assumes the internal system components are bug-free. A precondition defines the exact state the software architecture must be in for a component to function. If a precondition fails, it means there is a programming bug in your code, not that the user typed something wrong.
+          </p>
+          <ul class="paradigm-bullet">
+            <li><strong>Programming Bug:</strong> Fails fast; client developer failed to ensure preconditions.</li>
+            <li><strong>Response:</strong> Raise an exception/violation alert immediately to the developer team.</li>
+            <li><strong>Eiffel Principle:</strong> Enforces contract correctness. Preconditions are assertions, not input validation.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- Interactive Live Playground Section -->
+    <section class="card" style="margin-bottom: 2rem;">
+      <h2 class="card-title" style="border-bottom: none; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background: linear-gradient(to bottom, var(--primary), var(--accent)); border-radius: 4px; display: inline-block;"></span>
+        Design by Contract Sandbox
+      </h2>
+      <p class="subtitle" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Test contract failures, reflection inspects, and development vs production parity. Toggle fields below to see real-time updates and error handling.</p>
+
+      <form 
+        hx-post="/dbc-demo/render"
+        hx-target="#playground-result"
+        hx-trigger="submit, keyup changed delay:400ms from:input, keyup changed delay:400ms from:textarea, change from:input[type='checkbox']">
+        
+        <div class="playground-grid">
+          <!-- Bound Variables Configuration -->
+          <div class="btn-secondary" style="border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column;">
+            <h3 style="font-size: 1rem; color: white; margin-bottom: 1rem;">1. Bind Template Variables</h3>
+            
+            <div class="form-group">
+              <label for="username">Username (<code class="code-inline">&#123;username&#125;</code>)</label>
+              <input id="username" name="username" type="text" value="Javier" placeholder="Leave empty to trigger contract presence check" />
+            </div>
+
+            <div class="form-group">
+              <label for="age">Age (<code class="code-inline">&#123;age&#125;</code>)</label>
+              <input id="age" name="age" type="number" value="30" min="0" placeholder="Set under 18 to trigger age contract check" />
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+              <input id="is_admin" name="is_admin" type="checkbox" checked style="width: auto; margin-bottom: 0;" />
+              <label for="is_admin" style="margin-bottom: 0; cursor: pointer;">Is Administrator (<code class="code-inline">&#123;is_admin&#125;</code>)</label>
+            </div>
+
+            <!-- Interception Mode Toggle -->
+            <div style="border-top: 1px solid var(--border-color); margin-top: 0.5rem; padding-top: 1rem;">
+              <h3 style="font-size: 1rem; color: white; margin-bottom: 1rem;">2. Request Flow Control</h3>
+              
+              <!-- Validation mode -->
+              <div class="form-group" style="display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 1rem;">
+                <input id="validation_mode" name="validation_mode" type="checkbox" checked style="width: auto; margin-top: 0.25rem;" />
+                <div>
+                  <label for="validation_mode" style="margin-bottom: 0; cursor: pointer; color: var(--warning); font-weight: bold;">
+                    Perform Controller-Level Input Validation
+                  </label>
+                  <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">
+                    If checked, the controller intercepts invalid values at the boundary and returns a friendly user error. If unchecked, the controller bypasses checks and passes raw values directly to the engine (exposing contract bugs!).
+                  </p>
+                </div>
+              </div>
+
+              <!-- Glimmer contract mode -->
+              <div class="form-group" style="display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0;">
+                <input id="contract_mode" name="contract_mode" type="checkbox" checked style="width: auto; margin-top: 0.25rem;" />
+                <div>
+                  <label for="contract_mode" style="margin-bottom: 0; cursor: pointer; color: var(--accent); font-weight: bold;">
+                    Enable Glimmer Contract Mode (Development)
+                  </label>
+                  <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem;">
+                    When disabled, contracts and dumps are ignored (Production mode - zero runtime overhead).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Template Code Input & Render Output -->
+          <div style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="form-group" style="flex-grow: 1; display: flex; flex-direction: column; margin-bottom: 1rem;">
+              <label for="playground_template" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>3. Write Preconditions &amp; Dump Statements</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Renders automatically!</span>
+              </label>
+              <textarea id="playground_template" name="playground_template" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.875rem;" required>&#123;&#123;require username&#125;&#125;
+&#123;&#123;require age >= 18&#125;&#125;
+
+&lt;h3 style="margin-top: 0; color: white;"&gt;Rendered Output&lt;/h3&gt;
+&lt;p&gt;Authorized: &#123;username&#125; (Age: &#123;age&#125;, Admin: &#123;is_admin&#125;)&lt;/p&gt;
+
+&lt;h4 style="color: var(--accent); margin-bottom: 0.5rem;"&gt;User Object Dump:&lt;/h4&gt;
+&#123;dump user&#125;
+
+&lt;h4 style="color: var(--accent); margin-bottom: 0.5rem;"&gt;Skills Array Dump:&lt;/h4&gt;
+&#123;dump skills&#125;
+
+&lt;h4 style="color: var(--accent); margin-bottom: 0.5rem;"&gt;Entire Context Scope Dump:&lt;/h4&gt;
+&#123;dump_context&#125;</textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Force Render Sandbox</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Rendered Results View -->
+      <div style="margin-top: 2rem;">
+        <h3 style="font-size: 1rem; color: white; margin-bottom: 0.75rem;">4. Live Terminal View</h3>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">glimmer-render-engine</span>
+          </div>
+          <div id="playground-result" class="terminal-body" style="background-color: #050b18; min-height: 150px; white-space: pre-wrap; padding: 1.25rem;">
+            <!-- Prefilled rendered preview -->
+            <div style="color: var(--text-secondary); text-align: center; padding-top: 2.5rem;">Toggle inputs or type to trigger initial playground compile.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Additional Syntax Reference Grid -->
+    <section style="margin-bottom: 3rem;">
+      <h2 style="font-size: 1.5rem; color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background-color: var(--primary); border-radius: 4px; display: inline-block;"></span>
+        Core DbC Syntax Reference
+      </h2>
+      
+      <div class="grid grid-3">
+        <!-- Card 1: Variable Preconditions -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Variable Presence</h3>
+            <span class="badge badge-info explorer-badge">require</span>
+          </div>
+          <p class="explorer-desc">Asserts that required variables are defined and non-void in the render context.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;require username&#125;&#125;</span></div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">&#123;&#123;require user, role, items&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Fails if any listed variable is missing or evaluates to Void.</div>
+          </div>
+        </article>
+
+        <!-- Card 2: Expression Preconditions -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Expression Assertions</h3>
+            <span class="badge badge-info explorer-badge">require</span>
+          </div>
+          <p class="explorer-desc">Evaluates custom boolean preconditions before rendering content blocks.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;require age >= 18&#125;&#125;</span></div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">&#123;&#123;require exists token&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Reuses Glimmer's logical expression parser to validate complex states.</div>
+          </div>
+        </article>
+
+        <!-- Card 3: Variable Dumps -->
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>State Inspection</h3>
+            <span class="badge badge-warning explorer-badge">dump</span>
+          </div>
+          <p class="explorer-desc">Inspects any context variable or the entire context scope using reflection.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;dump user&#125;</span></div>
+            <div class="explorer-syntax" style="margin-top: 0.5rem;">Syntax: <span class="code-inline">&#123;dump_context&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Uses Eiffel reflection (INTERNAL) to render interactive tables.</div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>Eiffel Web Framework &amp; Glimmer Template Engine Demo</div>
+  </footer>
+
+  <!-- Intercept 422 error codes for HTMX swapping -->
+  <script>
+    document.body.addEventListener('htmx:beforeOnLoad', function(evt) {
+      if (evt.detail.xhr.status === 422) {
+        // Force HTMX to swap 422 responses containing contract violations
+        evt.detail.shouldSwap = true;
+        evt.detail.isError = false;
+      }
+    });
+  </script>
+</body>
+
+</html>

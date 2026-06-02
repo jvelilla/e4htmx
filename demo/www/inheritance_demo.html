@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Template Inheritance - Glimmer Template Engine</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <style>
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    @media (min-width: 768px) {
+      .concept-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    .concept-card {
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .concept-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.05);
+    }
+
+    .concept-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      font-family: var(--font-display);
+      color: white;
+    }
+
+    .concept-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .playground-grid-three {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (min-width: 992px) {
+      .playground-grid-three {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header / Navigation -->
+  <header class="app-header">
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <div class="brand-icon">G</div>
+        <span class="brand-text">Glimmer Engine</span>
+      </a>
+      <nav class="nav-menu">
+        <a href="/" class="nav-link">Dogs CRUD</a>
+        <a href="/filters-demo" class="nav-link">Filters &amp; Helpers</a>
+        <a href="/dbc-demo" class="nav-link">Design by Contract</a>
+        <a href="/components-demo" class="nav-link">Components</a>
+        <a href="/slots-demo" class="nav-link">Slots</a>
+        <a href="/inheritance-demo" class="nav-link active">Inheritance</a>
+        <a href="/whitespace-demo" class="nav-link">Whitespace</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    <h1 class="gradient-text">Glimmer Templates: Template Inheritance</h1>
+    <p class="subtitle">Organize layout structures cleanly using multi-level inheritance. Declare blocks in layouts, override them in page templates, and inherit default content when no override is present.</p>
+
+    <!-- Concepts Grid -->
+    <section class="concept-grid">
+      <!-- Extends Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #60a5fa;">
+          <span>🏗️</span> Extends Layout
+        </div>
+        <p class="concept-desc">
+          Declare which layout template to inherit using the <code class="code-inline">&#123;&#123;extends layout_name&#125;&#125;</code> tag at the very top of your child template.
+        </p>
+      </article>
+
+      <!-- Named Blocks Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #34d399;">
+          <span>📦</span> Named Blocks
+        </div>
+        <p class="concept-desc">
+          Define overrideable regions using <code class="code-inline">&#123;&#123;block name&#125;&#125;...&#123;&#123;end&#125;&#125;</code>. Children can replace the contents of these blocks by declaring blocks with the same name.
+        </p>
+      </article>
+
+      <!-- Default & Chains Card -->
+      <article class="concept-card">
+        <div class="concept-header" style="color: #f472b6;">
+          <span>🔗</span> Multi-level Chains
+        </div>
+        <p class="concept-desc">
+          Inheritance can span multiple levels (e.g. child extends layout, which extends base). Default block content in parent layouts is automatically used if not overridden.
+        </p>
+      </article>
+    </section>
+
+    <!-- Sandbox Card -->
+    <section class="card" style="margin-bottom: 2rem;">
+      <h2 class="card-title" style="border-bottom: none; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background: linear-gradient(to bottom, var(--primary), var(--accent)); border-radius: 4px; display: inline-block;"></span>
+        Template Inheritance Playground
+      </h2>
+      <p class="subtitle" style="margin-bottom: 1.5rem; font-size: 0.95rem;">Modify the base layout, mid layout, or main template below and watch Glimmer dynamically compile and resolve the inheritance hierarchy.</p>
+
+      <!-- Practice Scenarios Bar -->
+      <div class="scenarios-bar" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem;">
+        <span style="color: var(--text-secondary); font-size: 0.9rem; font-weight: bold;">Practice Scenarios:</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('basic', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(99, 102, 241, 0.4);">1. Basic Extension</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('chain', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(52, 211, 153, 0.4);">2. Multi-level Chain</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('default', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(244, 114, 182, 0.4);">3. Default Content</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadScenario('circular', event)" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-color: rgba(245, 158, 11, 0.4);">4. Circular Cycle</button>
+      </div>
+
+      <form id="playground-form"
+        hx-post="/inheritance-demo/render"
+        hx-target="#playground-result"
+        hx-trigger="submit, keyup changed delay:400ms from:input, keyup changed delay:400ms from:textarea">
+        
+        <div class="playground-grid-three">
+          <!-- Variables Bindings -->
+          <div class="btn-secondary" style="border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; height: 100%;">
+            <h3 style="font-size: 1rem; color: white; margin-bottom: 1.25rem;">1. Variables</h3>
+            
+            <div class="form-group">
+              <label for="author">Author Name (<code class="code-inline">author</code>)</label>
+              <input id="author" name="author" type="text" value="Javier" placeholder="Template author" />
+            </div>
+
+            <div class="form-group">
+              <label for="version">Version (<code class="code-inline">version</code>)</label>
+              <input id="version" name="version" type="text" value="2.0" placeholder="Template version" />
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="theme">Theme (<code class="code-inline">theme</code>)</label>
+              <input id="theme" name="theme" type="text" value="dark" placeholder="Theme style class" />
+            </div>
+          </div>
+
+          <!-- Base Layout -->
+          <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0;">
+            <label for="base_layout" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: white; font-weight: 700;">2. Base Layout (<code class="code-inline">base_layout</code>)</span>
+            </label>
+            <textarea id="base_layout" name="base_layout" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.85rem; min-height: 180px;" required></textarea>
+          </div>
+
+          <!-- Mid Layout -->
+          <div class="form-group" style="display: flex; flex-direction: column; margin-bottom: 0;">
+            <label for="mid_layout" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: white; font-weight: 700;">3. Mid Layout (Optional: <code class="code-inline">mid_layout</code>)</span>
+            </label>
+            <textarea id="mid_layout" name="mid_layout" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.85rem; min-height: 180px;"></textarea>
+          </div>
+        </div>
+
+        <!-- Main Template defining Fills -->
+        <div class="form-group" style="display: flex; flex-direction: column; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+          <label for="playground_template" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span style="color: white; font-weight: 700;">4. Main Child Template (Declares extends and block overrides)</span>
+          </label>
+          <textarea id="playground_template" name="playground_template" style="font-family: var(--font-mono); font-size: 0.85rem; min-height: 160px;" required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-playground-submit" style="width: 100%;">Compile and Render inheritance</button>
+      </form>
+
+      <!-- Terminal Output -->
+      <div style="margin-top: 2rem;">
+        <h3 style="font-size: 1rem; color: white; margin-bottom: 0.75rem;">5. Live Render Output</h3>
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">glimmer-inheritance-renderer</span>
+          </div>
+          <div id="playground-result" class="terminal-body" style="background-color: #050b18; min-height: 180px; white-space: pre-wrap; padding: 1.25rem; color: var(--text-primary);">
+            <div style="color: var(--text-secondary); text-align: center; padding-top: 3.5rem;">Modify any input or template above to trigger rendering!</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Syntax Reference -->
+    <section style="margin-bottom: 3rem;">
+      <h2 style="font-size: 1.5rem; color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="width: 8px; height: 1.5rem; background-color: var(--primary); border-radius: 4px; display: inline-block;"></span>
+        Inheritance Syntax Reference
+      </h2>
+      
+      <div class="grid grid-3">
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Extends Tag</h3>
+            <span class="badge badge-info explorer-badge">extends</span>
+          </div>
+          <p class="explorer-desc">Declares which parent template layout structure to inherit from. Must be at the top of the file.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;extends base_layout&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Parent layouts can be partials or relative template files on disk.</div>
+          </div>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Block Declaration</h3>
+            <span class="badge badge-info explorer-badge">block</span>
+          </div>
+          <p class="explorer-desc">Defines a named block with default content in the parent layout.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;block content&#125;&#125;...&#123;&#123;end&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">If a child does not override it, the default content inside the block will render.</div>
+          </div>
+        </article>
+
+        <article class="card explorer-card">
+          <div class="explorer-title-area">
+            <h3>Block Override</h3>
+            <span class="badge badge-warning explorer-badge">override</span>
+          </div>
+          <p class="explorer-desc">Declared in child templates to replace the block content in layout pages.</p>
+          <div class="explorer-demo-block">
+            <div class="explorer-syntax">Syntax: <span class="code-inline">&#123;&#123;block content&#125;&#125;Child HTML&#123;&#123;end&#125;&#125;</span></div>
+            <div class="explorer-desc" style="font-size: 0.75rem; margin-top: 0.5rem; padding: 0.25rem 0;">Replaces the matching parent block's body when rendering the hierarchy.</div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>Eiffel Web Framework &amp; Glimmer Template Engine Demo</div>
+  </footer>
+
+  <!-- Scenario Loader Script -->
+  <script>
+    const scenarios = {
+      basic: {
+        author: "Javier",
+        version: "2.0",
+        theme: "dark",
+        baseLayout: `<div class="layout-showcase" style="border: 2px dashed rgba(99, 102, 241, 0.4); padding: 1.5rem; border-radius: var(--radius-lg); background-color: rgba(255, 255, 255, 0.01);">
+  <header style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; color: #60a5fa; font-weight: bold;">
+    \x7b\x7bblock header\x7d\x7d<h1>Default Base Header</h1>\x7b\x7bend\x7d\x7d
+  </header>
+  <main style="padding: 1rem 0; min-height: 80px;">
+    \x7b\x7bblock content\x7d\x7d\x7b\x7bend\x7d\x7d
+  </main>
+  <footer style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+    <span>System Version: {version}</span>
+    <span>Created by: {author}</span>
+  </footer>
+</div>`,
+        midLayout: ``,
+        playground: `\x7b\x7bextends base_layout\x7d\x7d
+
+\x7b\x7bblock header\x7d\x7d
+  <h1 style="margin: 0; color: #34d399;">💥 Welcome to Glimmer Template Inheritance!</h1>
+\x7b\x7bend\x7d\x7d
+
+\x7b\x7bblock content\x7d\x7d
+  <p style="margin: 0; line-height: 1.6;">
+    This paragraph overrides the <code>content</code> block in the base layout. Parent variables like <strong>{theme}</strong> theme can also be resolved here.
+  </p>
+\x7b\x7bend\x7d\x7d`
+      },
+      chain: {
+        author: "Javier",
+        version: "2.0",
+        theme: "ocean",
+        baseLayout: `<div class="base-layout" style="border: 2px solid #1e3a8a; padding: 1.5rem; border-radius: var(--radius-lg); background-color: #0b1329;">
+  <div style="font-size: 0.8rem; color: #3b82f6; text-transform: uppercase; margin-bottom: 1rem; font-weight: bold;">[Level 1: Base Layout]</div>
+  <header style="margin-bottom: 1rem;">
+    \x7b\x7bblock header\x7d\x7d<h1>Default Base Header</h1>\x7b\x7bend\x7d\x7d
+  </header>
+  <main style="padding: 1rem 0; background-color: rgba(255,255,255,0.02); border-radius: var(--radius-md); padding: 1rem; border: 1px solid #1e293b;">
+    \x7b\x7bblock content\x7d\x7d\x7b\x7bend\x7d\x7d
+  </main>
+</div>`,
+        midLayout: `\x7b\x7bextends base_layout\x7d\x7d
+
+\x7b\x7bblock header\x7d\x7d
+  <div style="color: #60a5fa;">
+    <div style="font-size: 0.8rem; color: #60a5fa; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: bold;">[Level 2: Mid Layout Overriding Header]</div>
+    <h2 style="margin: 0;">🌊 Mid-level Ocean Layout Header</h2>
+  </div>
+\x7b\x7bend\x7d\x7d`,
+        playground: `\x7b\x7bextends mid_layout\x7d\x7d
+
+\x7b\x7bblock content\x7d\x7d
+  <div>
+    <div style="font-size: 0.8rem; color: #34d399; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: bold;">[Level 3: Child Page Overriding Content]</div>
+    <p style="margin: 0; line-height: 1.6;">
+      This overrides the <code>content</code> block defined in the base layout, while the header is cleanly inherited from <code>mid_layout</code>!
+    </p>
+  </div>
+\x7b\x7bend\x7d\x7d`
+      },
+      default: {
+        author: "Javier",
+        version: "2.0",
+        theme: "light",
+        baseLayout: `<div class="base-layout" style="border: 2px dashed rgba(255,255,255,0.15); padding: 1.5rem; border-radius: var(--radius-lg);">
+  <header style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+    \x7b\x7bblock header\x7d\x7d
+      <h2 style="margin:0; color: #a855f7;">🔮 Glimmer Default Header</h2>
+    \x7b\x7bend\x7d\x7d
+  </header>
+  <main style="padding: 1rem 0;">
+    \x7b\x7bblock content\x7d\x7d
+      <p style="margin: 0; color: var(--text-secondary);">This is the default content of the main block when the child template does not override it.</p>
+    \x7b\x7bend\x7d\x7d
+  </main>
+</div>`,
+        midLayout: ``,
+        playground: `\x7b\x7bextends base_layout\x7d\x7d
+
+<!-- We do not override any blocks here. Glimmer will render all default block content. -->`
+      },
+      circular: {
+        author: "Javier",
+        version: "2.0",
+        theme: "dark",
+        baseLayout: `\x7b\x7bextends mid_layout\x7d\x7d`,
+        midLayout: `\x7b\x7bextends base_layout\x7d\x7d`,
+        playground: `\x7b\x7bextends base_layout\x7d\x7d`
+      }
+    };
+
+    function loadScenario(name, event) {
+      const s = scenarios[name];
+      if (!s) return;
+      document.getElementById('author').value = s.author;
+      document.getElementById('version').value = s.version;
+      document.getElementById('theme').value = s.theme;
+      document.getElementById('base_layout').value = s.baseLayout;
+      document.getElementById('mid_layout').value = s.midLayout;
+      document.getElementById('playground_template').value = s.playground;
+      
+      // Update active button styles
+      const buttons = document.querySelectorAll('.scenarios-bar button');
+      buttons.forEach(btn => {
+        btn.style.backgroundColor = 'var(--btn-secondary-bg, rgba(255,255,255,0.05))';
+        btn.style.color = 'var(--text-secondary)';
+      });
+      
+      const activeBtn = event ? event.currentTarget : null;
+      if (activeBtn) {
+        activeBtn.style.backgroundColor = 'var(--primary)';
+        activeBtn.style.color = 'white';
+      }
+
+      // Trigger HTMX rendering automatically
+      htmx.trigger('#playground-form', 'submit');
+    }
+
+    // Auto-load the first scenario on page load
+    window.onload = function() {
+      // Highlight the first button as active
+      const firstBtn = document.querySelector('.scenarios-bar button');
+      if (firstBtn) {
+        firstBtn.style.backgroundColor = 'var(--primary)';
+        firstBtn.style.color = 'white';
+      }
+      loadScenario('basic');
+    };
+  </script>
+</body>
+
+</html>

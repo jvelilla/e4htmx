@@ -20,7 +20,7 @@ feature {NONE} -- Initialization
 			-- Initialize service on port 9091
 		do
 			Precursor
-			set_service_option ("port", 9091)
+			set_service_option ("port", 9090)
 			set_service_option ("verbose", "yes")
 		end
 

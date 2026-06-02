@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pagination with HTMX & Eiffel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  </head>
+  <body>
+    <!-- Background floating gradient orbs -->
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+
+    <div class="dashboard-wrapper">
+      <!-- Header Section -->
+      <div class="glass-card header-card">
+        <h1>Pokémon Explorer</h1>
+        <p class="intro-text">
+          A dynamic server-side paginated list of Pokémon species fetched from the PokeAPI. Powered by Eiffel and HTMX for smooth, zero-refresh interactions.
+        </p>
+      </div>
+
+      <!-- Main Content Card -->
+      <div class="glass-card table-card">
+        <div class="table-container">
+          <table
+            hx-trigger="load"
+            hx-get="/pokemon-rows?page=1"
+            hx-indicator=".htmx-indicator"
+          >
+            <!-- Loading indicator when first loading table -->
+            <tbody>
+              <tr>
+                <td colspan="3" style="text-align: center; padding: 4rem 0;">
+                  <div class="shimmer-spinner" style="margin: 0 auto 1rem auto;"></div>
+                  <div class="loader-text">Loading species registry...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination and Progress -->
+        <div class="pagination-controls-row">
+          <span id="pagination-buttons">
+            <!-- Populated via OOB swap -->
+          </span>
+          <div class="indicator-wrapper">
+            <div class="htmx-indicator loader-inline">
+              <div class="shimmer-spinner small-spinner"></div>
+              <span class="loader-text">Updating list...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

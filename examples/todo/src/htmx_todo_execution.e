@@ -35,6 +35,7 @@ feature -- Filter
 			create {WSF_CORS_FILTER} f
 			f.set_next (create {WSF_LOGGING_FILTER})
 			filter.append (f)
+			filter.append (create {WSF_NO_CACHE_FILTER})
 		end
 
 feature -- Router
@@ -53,6 +54,7 @@ feature -- Router
 			map_uri_template_agent ("/todos/{id}/toggle-complete", agent handle_toggle_todo_complete, methods_patch)
 
 			create www.make_with_path (document_root)
+			www.set_max_age (0)
 			www.set_directory_index (<<"index.html">>)
 			www.set_not_found_handler (agent execute_not_found)
 			router.handle ("", www, router.methods_GET)
@@ -80,35 +82,28 @@ feature -- Events
 
 	handle_version (req: WSF_REQUEST; res: WSF_RESPONSE)
 		local
-			l_result: STRING_8
+			c: EWF_GLIMMER_CONTEXT
 		do
-			l_result := "Eiffel Web Framework: 24.11"
-			new_response_get (req, res, l_result)
-		end
-
-	new_response_get (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
-		local
-			h: HTTP_HEADER
-		do
-			create h.make
-			h.put_content_type_text_html
-			h.put_content_length (output.count)
-			h.put_current_date
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (output)
+			create c.make (req, res)
+			c.text ("Eiffel Web Framework: 24.11")
 		end
 
 	execute_not_found (uri: READABLE_STRING_8; req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- `uri' is not found, redirect to default page
+		local
+			c: EWF_GLIMMER_CONTEXT
 		do
-			res.redirect_now_with_content (req.script_url ("/"), uri + ": not found.%NRedirection to " + req.script_url ("/"), "text/html")
+			create c.make (req, res)
+			c.redirect (req.script_url ("/"))
 		end
 
 	handle_root (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle GET / request by redirecting to /todos
+		local
+			c: EWF_GLIMMER_CONTEXT
 		do
-			res.redirect_now (req.script_url ("/todos"))
+			create c.make (req, res)
+			c.redirect (req.script_url ("/todos"))
 		end
 
 feature -- Handlers
@@ -116,34 +111,34 @@ feature -- Handlers
 	handle_todos (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle GET and POST /todos requests
 		local
-			l_todo_manager: TODO_MANAGER
+			c: EWF_GLIMMER_CONTEXT
 			l_description: detachable STRING
 		do
-			create l_todo_manager
+			create c.make (req, res)
 
-			if req.is_post_request_method then
+			if c.is_post then
 					-- Handle POST request
-				if attached {WSF_STRING} req.form_parameter ("description") as l_desc then
-					l_description := l_desc.value
-					if l_description /= Void and then not l_description.is_empty then
+				if attached c.form_value ("description") as l_desc then
+					l_description := l_desc.to_string_8
+					if not l_description.is_empty then
 							-- Try to add new todo
-						add_todo (req, res, l_description)
+						add_todo (c, l_description)
 					else
 							-- Empty description error
-						res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-						new_response_html (req, res, "<div class=%"error%">Todo description cannot be empty</div>")
+						c.set_status ({HTTP_STATUS_CODE}.bad_request)
+						c.html ("<div class=%"error%">Todo description cannot be empty</div>")
 					end
 				else
-					res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-					new_response_html (req, res, "<div class=%"error%">Missing description parameter</div>")
+					c.set_status ({HTTP_STATUS_CODE}.bad_request)
+					c.html ("<div class=%"error%">Missing description parameter</div>")
 				end
 			else
 					-- Handle GET request
-				handle_todos_get (req, res)
+				handle_todos_get (c)
 			end
 		end
 
-	handle_todos_get (req: WSF_REQUEST; res: WSF_RESPONSE)
+	handle_todos_get (c: EWF_GLIMMER_CONTEXT)
 			-- Handle GET /todos request
 		local
 			l_todo_manager: TODO_MANAGER
@@ -151,10 +146,9 @@ feature -- Handlers
 			l_json: STRING
 			l_html: STRING
 			l_accept: detachable READABLE_STRING_32
-			l_htmx: GLM_HTMX_REQUEST
 		do
 				-- Get Accept header
-			l_accept := req.meta_string_variable ("HTTP_ACCEPT")
+			l_accept := c.request.meta_string_variable ("HTTP_ACCEPT")
 
 			create l_todo_manager
 			l_todos := l_todo_manager.retrieve_all
@@ -171,14 +165,13 @@ feature -- Handlers
 						"%",%"completed%":" + todo.item.completed.out + "}")
 				end
 				l_json.append ("]")
-				new_response_json (req, res, l_json)
+				c.json (l_json)
 			else
 					-- Check if this is a direct browser request (not via HTMX)
-				l_htmx := GLM_HTMX_REQUEST (req)
-				if not l_htmx.is_htmx_request then
+				if not c.htmx.is_htmx_request then
 						-- Redirect direct browser requests to the index.html page
 						-- so the user gets the fully styled web app layout.
-					res.redirect_now (req.script_url ("/index.html"))
+					c.redirect (c.request.script_url ("/index.html"))
 				else
 						-- Return HTML fragment for HTMX requests
 					create l_html.make_from_string (
@@ -188,81 +181,47 @@ feature -- Handlers
 					end
 
 					l_html.append ("</div>")
-					new_response_html (req, res, l_html)
+					c.html (l_html)
 				end
 			end
-		end
-
-	new_response_json (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
-			-- Send JSON response
-		local
-			h: HTTP_HEADER
-		do
-			create h.make
-			h.put_content_type ("application/json")
-			h.put_content_length (output.count)
-			h.put_current_date
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (output)
-		end
-
-	new_response_html (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
-			-- Send HTML response
-		local
-			h: HTTP_HEADER
-		do
-			create h.make
-			h.put_content_type_text_html
-			h.put_content_length (output.count)
-			h.put_current_date
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (output)
 		end
 
 	handle_delete_todo (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle DELETE /todos/:id request
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_id: INTEGER
 			l_todo_manager: TODO_MANAGER
-			l_id_param: WSF_VALUE
-			h: HTTP_HEADER
 		do
+			create c.make (req, res)
 				-- Get the ID from the URL parameter
-			l_id_param := req.path_parameter ("id")
-			if attached {WSF_STRING} l_id_param as l_param and then l_param.is_integer then
-				l_id := l_param.value.to_integer
+			if attached c.param ("id") as l_param and then l_param.is_integer then
+				l_id := l_param.to_integer
 
 					-- Delete the todo
 				create l_todo_manager
 				l_todo_manager.delete (l_id)
 
 					-- Create and set headers including HTMX trigger
-				create h.make
-				h.put_header_key_value ("hx-trigger", "status-change")
-				h.put_content_type_text_html
-				h.put_content_length (0)
-				h.put_current_date
-				res.set_status_code ({HTTP_STATUS_CODE}.ok)
-				res.put_header_text (h.string)
-				res.put_string ("")
-
+				c.set_trigger ("status-change")
+				c.empty
 			else
 					-- Invalid ID parameter
-				res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-				res.put_string ("Invalid todo ID")
+				c.set_status ({HTTP_STATUS_CODE}.bad_request)
+				c.text ("Invalid todo ID")
 			end
 		end
 
 	handle_todos_status (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle GET /todos/status request
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_todo_manager: TODO_MANAGER
 			l_todos: LIST [TODO]
 			l_uncompleted_count: INTEGER
 			l_response: STRING
 		do
+			create c.make (req, res)
 			create l_todo_manager
 			l_todos := l_todo_manager.retrieve_all
 
@@ -279,23 +238,22 @@ feature -- Handlers
 			l_response.append (l_todos.count.out)
 			l_response.append (" remaining")
 
-			new_response_text (req, res, l_response)
+			c.text (l_response)
 		end
 
 	handle_update_todo_description (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle PATCH /todos/:id/description request
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_id: INTEGER
 			l_todo_manager: TODO_MANAGER
 			l_todo: detachable TODO
-			l_id_param: WSF_VALUE
 			l_description: detachable STRING
-			h: HTTP_HEADER
 		do
+			create c.make (req, res)
 				-- Get the ID from the URL parameter
-			l_id_param := req.path_parameter ("id")
-			if attached {WSF_STRING} l_id_param as l_param and then l_param.is_integer then
-				l_id := l_param.value.to_integer
+			if attached c.param ("id") as l_param and then l_param.is_integer then
+				l_id := l_param.to_integer
 
 					-- Get the todo
 				create l_todo_manager
@@ -303,61 +261,46 @@ feature -- Handlers
 
 				if l_todo /= Void then
 						-- Get description from form data
-					if attached {WSF_STRING} req.form_parameter ("description") as l_desc then
-						l_description := l_desc.value
+					if attached c.form_value ("description") as l_desc then
+						l_description := l_desc.to_string_8
 
-						if l_description /= Void and then not l_description.is_empty then
+						if not l_description.is_empty then
 								-- Update todo
 							l_todo.set_description (l_description)
 							l_todo_manager.save (l_todo)
 
 								-- Return updated todo HTML
-							new_response_html_with_trigger (req, res, todo_item_html (l_todo), "description-change")
+							c.set_trigger ("description-change")
+							c.html (todo_item_html (l_todo))
 						else
 								-- Empty description error
-							res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-							new_response_html (req, res,
-								todo_item_html (l_todo) +
+							c.set_status ({HTTP_STATUS_CODE}.bad_request)
+							c.html (todo_item_html (l_todo) +
 								"<div class=%"error%">Todo description cannot be empty.</div>")
 						end
 					end
 				else
-					res.set_status_code ({HTTP_STATUS_CODE}.not_found)
-					res.put_string ("Todo not found")
+					c.set_status ({HTTP_STATUS_CODE}.not_found)
+					c.text ("Todo not found")
 				end
 			else
-				res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-				res.put_string ("Invalid todo ID")
+				c.set_status ({HTTP_STATUS_CODE}.bad_request)
+				c.text ("Invalid todo ID")
 			end
-		end
-
-	new_response_text (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING)
-			-- Send plain text response
-		local
-			h: HTTP_HEADER
-		do
-			create h.make
-			h.put_content_type_text_plain
-			h.put_content_length (output.count)
-			h.put_current_date
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (output)
 		end
 
 	handle_toggle_todo_complete (req: WSF_REQUEST; res: WSF_RESPONSE)
 			-- Handle PATCH /todos/:id/toggle-complete request
 		local
+			c: EWF_GLIMMER_CONTEXT
 			l_id: INTEGER
 			l_todo_manager: TODO_MANAGER
 			l_todo: detachable TODO
-			l_id_param: WSF_VALUE
-			h: HTTP_HEADER
 		do
+			create c.make (req, res)
 				-- Get the ID from the URL parameter
-			l_id_param := req.path_parameter ("id")
-			if attached {WSF_STRING} l_id_param as l_param and then l_param.is_integer then
-				l_id := l_param.value.to_integer
+			if attached c.param ("id") as l_param and then l_param.is_integer then
+				l_id := l_param.to_integer
 
 					-- Get the todo
 				create l_todo_manager
@@ -369,14 +312,15 @@ feature -- Handlers
 					l_todo_manager.save (l_todo)
 
 						-- Return updated todo HTML
-					new_response_html_with_trigger (req, res, todo_item_html (l_todo), "status-change")
+					c.set_trigger ("status-change")
+					c.html (todo_item_html (l_todo))
 				else
-					res.set_status_code ({HTTP_STATUS_CODE}.not_found)
-					res.put_string ("Todo not found")
+					c.set_status ({HTTP_STATUS_CODE}.not_found)
+					c.text ("Todo not found")
 				end
 			else
-				res.set_status_code ({HTTP_STATUS_CODE}.bad_request)
-				res.put_string ("Invalid todo ID")
+				c.set_status ({HTTP_STATUS_CODE}.bad_request)
+				c.text ("Invalid todo ID")
 			end
 		end
 
@@ -398,14 +342,12 @@ feature {NONE} -- Implementation
 			end
 		end
 
-	add_todo (req: WSF_REQUEST; res: WSF_RESPONSE; a_description: STRING)
+	add_todo (c: EWF_GLIMMER_CONTEXT; a_description: STRING)
 			-- Add a new todo with `a_description`.
-			-- Return True if successful, False if error occurred.
 		local
 			l_todo_manager: TODO_MANAGER
 			l_todo: TODO
 			l_html: STRING
-			h: HTTP_HEADER
 		do
 				-- Simulate delay for testing spinner (optional)
 			{EXECUTION_ENVIRONMENT}.sleep (500_000_000) -- 500ms in nanoseconds
@@ -424,7 +366,8 @@ feature {NONE} -- Implementation
 					-- Clear any previous error message
 				l_html.append ("<div class=%"error%"></div>")
 
-				new_response_html_with_trigger (req, res, l_html, "status-change")
+				c.set_trigger ("status-change")
+				c.html (l_html)
 			else
 					-- Handle duplicate todo
 				create l_html.make_from_string ("<div class=%"error%">")
@@ -432,7 +375,7 @@ feature {NONE} -- Implementation
 				l_html.append (a_description)
 				l_html.append ("%"</div>")
 
-				new_response_html (req, res, l_html)
+				c.html (l_html)
 			end
 		rescue
 				-- Handle other errors
@@ -444,29 +387,7 @@ feature {NONE} -- Implementation
 --            end
 			l_html.append ("</div>")
 
-			new_response_html (req, res, l_html)
-		end
-
-	new_error_html (req: WSF_REQUEST; res: WSF_RESPONSE; message: STRING)
-			-- Send error HTML response
-		do
-			new_response_html (req, res,
-				"<div id=%"error%" hx-swap-oob=%"true%">" + message + "</div>")
-		end
-
-	new_response_html_with_trigger (req: WSF_REQUEST; res: WSF_RESPONSE; output: STRING; a_trigger: READABLE_STRING_8)
-			-- Send HTML response with an HTMX trigger header
-		local
-			h: HTTP_HEADER
-		do
-			create h.make
-			h.put_content_type_text_html
-			h.put_content_length (output.count)
-			h.put_current_date
-			h.put_header_key_value ("HX-Trigger", a_trigger)
-			res.set_status_code ({HTTP_STATUS_CODE}.ok)
-			res.put_header_text (h.string)
-			res.put_string (output)
+			c.html (l_html)
 		end
 
 

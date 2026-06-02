@@ -20,9 +20,14 @@ feature {NONE} -- Initialization
 			create sections.make (5)
 			create trigger_events.make (5)
 			trigger_events.compare_objects
+			create filter_registry.make
+			create helper_registry.make (10)
+			helper_registry.compare_objects
 			recursion_depth := DEFAULT_MAX_RECURSION_DEPTH
 			auto_escape := True
 			last_error := Void
+			contract_mode := False
+			last_contract_violation := Void
 		end
 
 feature -- Access
@@ -32,6 +37,12 @@ feature -- Access
 
 	partials: STRING_TABLE [STRING_32]
 			-- Storage for partial templates
+
+	filter_registry: GLM_FILTER_REGISTRY
+			-- Registry of built-in filters
+
+	helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]
+			-- Registry of custom helpers
 
 	recursion_depth: INTEGER
 			-- Current maximum recursion depth
@@ -51,12 +62,24 @@ feature -- Access
 	last_error: detachable STRING_32
 			-- Description of the last rendering or parsing error
 
+	last_contract_violation: detachable STRING_32
+			-- Description of the last contract violation
+
+	contract_mode: BOOLEAN
+			-- Is contract mode enabled?
+
 feature -- Status Report
 
 	has_error: BOOLEAN
 			-- Did the last operation result in an error?
 		do
 			Result := last_error /= Void
+		end
+
+	has_contract_violation: BOOLEAN
+			-- Did the last operation result in a contract violation?
+		do
+			Result := last_contract_violation /= Void
 		end
 
 	is_reserved_name (name: READABLE_STRING_GENERAL): BOOLEAN
@@ -88,6 +111,14 @@ feature -- Element Change
 			auto_escape := value
 		ensure
 			auto_escape_set: auto_escape = value
+		end
+
+	set_contract_mode (value: BOOLEAN)
+			-- Enable or disable contract mode (preconditions and dump debugging)
+		do
+			contract_mode := value
+		ensure
+			contract_mode_set: contract_mode = value
 		end
 
 	set_layout (template: READABLE_STRING_GENERAL)
@@ -143,6 +174,17 @@ feature -- Element Change
 			set_variable (name, value.to_string_32)
 		end
 
+	register_helper (name: READABLE_STRING_GENERAL; helper: FUNCTION [TUPLE, STRING_32])
+			-- Register a custom helper function as a named filter
+		local
+			l_name: STRING_32
+		do
+			create l_name.make_from_string (name.to_string_32)
+			helper_registry.force (helper, l_name)
+		ensure
+			helper_registered: helper_registry.has (name.to_string_32)
+		end
+
 	register_partial (name: READABLE_STRING_GENERAL; template: READABLE_STRING_GENERAL)
 			-- Register a partial template that can be included in other templates
 		local
@@ -152,6 +194,9 @@ feature -- Element Change
 			create l_name.make_from_string (name.to_string_32)
 			create l_tmpl.make_from_string (template.to_string_32)
 			partials.force (l_tmpl, l_name)
+			if compiled_templates_cache.has (l_name) then
+				compiled_templates_cache.remove (l_name)
+			end
 		end
 
 	register_partial_file (name: READABLE_STRING_GENERAL; filename: READABLE_STRING_GENERAL)
@@ -159,12 +204,14 @@ feature -- Element Change
 		local
 			l_file: PLAIN_TEXT_FILE
 			l_template: STRING_32
+			l_conv: UTF_CONVERTER
 		do
 			create l_file.make_with_name (filename.to_string_32)
 			if l_file.exists and then l_file.is_readable then
 				l_file.open_read
 				l_file.read_stream (l_file.count)
-				create l_template.make_from_string (l_file.last_string.to_string_32)
+				create l_conv
+				l_template := l_conv.utf_8_string_8_to_string_32 (l_file.last_string)
 				l_file.close
 				register_partial (name, l_template)
 			else
@@ -191,13 +238,15 @@ feature -- Operations
 		local
 			l_file: PLAIN_TEXT_FILE
 			l_template: STRING_32
+			l_conv: UTF_CONVERTER
 		do
 			last_error := Void
 			create l_file.make_with_name (filename.to_string_32)
 			if l_file.exists and then l_file.is_readable then
 				l_file.open_read
 				l_file.read_stream (l_file.count)
-				create l_template.make_from_string (l_file.last_string.to_string_32)
+				create l_conv
+				l_template := l_conv.utf_8_string_8_to_string_32 (l_file.last_string)
 				l_file.close
 				Result := render_with_name (l_template, filename)
 			else
@@ -367,7 +416,7 @@ feature -- Expression Evaluation
 		local
 			l_context: GLM_RENDER_CONTEXT
 		do
-			create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+			create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
 			Result := l_context.evaluate_expression (expression.to_string_32)
 		end
 
@@ -382,16 +431,33 @@ feature -- HTML Safety
 			l_buffer: STRING_32
 		do
 			last_error := Void
+			last_contract_violation := Void
 			l_nodes := get_compiled_template (template)
 			if has_error then
 				create Result.make_empty
 			else
-				create l_context.make (variables, partials, recursion_depth, False, compiled_templates_cache, max_cache_size)
-				create l_buffer.make (template.count * 8)
-				across l_nodes as node loop
-					node.item.render (l_context, l_buffer)
+				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, False, compiled_templates_cache, max_cache_size, contract_mode)
+				
+				if l_context.has_extends_node (l_nodes) then
+					if attached l_context.resolve_inheritance_chain (l_nodes) as l_chain then
+						l_nodes := l_chain
+					end
 				end
-				Result := escape_html (l_buffer)
+				
+				create l_buffer.make (template.count * 8)
+				if not l_context.has_error then
+					across l_nodes as node loop
+						node.item.render (l_context, l_buffer)
+					end
+				end
+				
+				if l_context.has_error then
+					last_error := l_context.last_error
+					last_contract_violation := l_context.last_contract_violation
+					create Result.make_empty
+				else
+					Result := escape_html (l_buffer)
+				end
 			end
 		end
 
@@ -406,41 +472,54 @@ feature {NONE} -- Implementation
 			l_main_buffer: STRING_32
 		do
 			last_error := Void
+			last_contract_violation := Void
 			l_nodes := get_compiled_template_with_name (template, a_name)
 			if has_error then
 				create Result.make_empty
 			else
-				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+				create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
+				if attached a_name as n then
+					l_context.set_current_template_name (n)
+				end
 				
-				if attached layout as l_layout then
-					-- Layout is present. Render main template into a temporary buffer
-					create l_main_buffer.make (template.count * 8)
-					across l_nodes as node loop
-						node.item.render (l_context, l_main_buffer)
+				if l_context.has_extends_node (l_nodes) then
+					if attached l_context.resolve_inheritance_chain (l_nodes) as l_chain then
+						l_nodes := l_chain
 					end
-					-- If there is non-section content and "content" is not already defined, store it in "content"
-					if not l_main_buffer.is_empty and then not l_context.sections.has ("content") then
-						l_context.sections.force (l_main_buffer, "content")
-					end
-					
-					-- Render layout
-					create l_buffer.make (l_layout.count * 8)
-					l_nodes := get_compiled_template_with_name (l_layout, Void)
-					if not has_error then
+				end
+				
+				create l_buffer.make (template.count * 8)
+				
+				if not l_context.has_error then
+					if attached layout as l_layout then
+						-- Layout is present. Render main template into a temporary buffer
+						create l_main_buffer.make (template.count * 8)
+						across l_nodes as node loop
+							node.item.render (l_context, l_main_buffer)
+						end
+						-- If there is non-section content and "content" is not already defined, store it in "content"
+						if not l_main_buffer.is_empty and then not l_context.sections.has ("content") then
+							l_context.sections.force (l_main_buffer, "content")
+						end
+						
+						-- Render layout
+						l_nodes := get_compiled_template_with_name (l_layout, Void)
+						if not has_error then
+							across l_nodes as node loop
+								node.item.render (l_context, l_buffer)
+							end
+						end
+					else
+						-- No layout, render main template directly to l_buffer
 						across l_nodes as node loop
 							node.item.render (l_context, l_buffer)
 						end
-					end
-				else
-					-- No layout, render main template directly to l_buffer
-					create l_buffer.make (template.count * 8)
-					across l_nodes as node loop
-						node.item.render (l_context, l_buffer)
 					end
 				end
 				
 				if l_context.has_error then
 					last_error := l_context.last_error
+					last_contract_violation := l_context.last_contract_violation
 					create Result.make_empty
 				else
 					-- Wipe sections at the end of rendering
@@ -461,6 +540,7 @@ feature {NONE} -- Implementation
 			l_section: detachable GLM_SECTION_NODE
 		do
 			last_error := Void
+			last_contract_violation := Void
 			create l_sec_name.make_from_string (section_name.to_string_32)
 			
 			if attached a_name as n then
@@ -477,15 +557,30 @@ feature {NONE} -- Implementation
 			if l_section = Void then
 				l_nodes := get_compiled_template_with_name (template, a_name)
 				if not has_error then
-					l_section := find_section_node (l_nodes, l_sec_name)
-					if l_section /= Void and then attached l_cache_key as k then
-						if section_nodes_cache.count >= max_cache_size then
-							section_nodes_cache.start
-							if not section_nodes_cache.off then
-								section_nodes_cache.remove (section_nodes_cache.key_for_iteration)
-							end
+					create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
+					if attached a_name as n then
+						l_context.set_current_template_name (n)
+					end
+					if l_context.has_extends_node (l_nodes) then
+						if attached l_context.resolve_inheritance_chain (l_nodes) as l_chain then
+							l_nodes := l_chain
 						end
-						section_nodes_cache.force (l_section, k)
+					end
+					
+					if not l_context.has_error then
+						l_section := find_section_node (l_nodes, l_sec_name)
+						if l_section /= Void and then attached l_cache_key as k then
+							if section_nodes_cache.count >= max_cache_size then
+								section_nodes_cache.start
+								if not section_nodes_cache.off then
+									section_nodes_cache.remove (section_nodes_cache.key_for_iteration)
+								end
+							end
+							section_nodes_cache.force (l_section, k)
+						end
+					else
+						last_error := l_context.last_error
+						last_contract_violation := l_context.last_contract_violation
 					end
 				end
 			end
@@ -493,12 +588,23 @@ feature {NONE} -- Implementation
 			if has_error then
 				create Result.make_empty
 			elseif l_section /= Void then
-				create l_context.make (variables, partials, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size)
+				if l_context = Void then
+					create l_context.make (variables, partials, filter_registry, helper_registry, recursion_depth, auto_escape, compiled_templates_cache, max_cache_size, contract_mode)
+					if attached a_name as n then
+						l_context.set_current_template_name (n)
+					end
+				end
 				create l_buffer.make (128)
 				across l_section.body as node loop
 					node.item.render (l_context, l_buffer)
 				end
-				Result := l_buffer
+				if l_context.has_error then
+					last_error := l_context.last_error
+					last_contract_violation := l_context.last_contract_violation
+					create Result.make_empty
+				else
+					Result := l_buffer
+				end
 			else
 				last_error := "Section not found: " + l_sec_name
 				create Result.make_empty
@@ -526,6 +632,8 @@ feature {NONE} -- Implementation
 					if Result = Void and then attached l_cond.false_branch as l_false then
 						Result := find_section_node (l_false, a_name)
 					end
+				elseif attached {GLM_BLOCK_NODE} l_node as l_block then
+					Result := find_section_node (l_block.body, a_name)
 				end
 				i := i + 1
 			end

@@ -12,22 +12,33 @@ create
 
 feature {NONE} -- Initialization
 
-	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_cache: HASH_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE], STRING_32]; a_max_cache_size: INTEGER)
+	make (a_variables: STRING_TABLE [ANY]; a_partials: STRING_TABLE [STRING_32]; a_filter_registry: GLM_FILTER_REGISTRY; a_helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]; a_max_recursion_depth: INTEGER; a_auto_escape: BOOLEAN; a_cache: HASH_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE], STRING_32]; a_max_cache_size: INTEGER; a_contract_mode: BOOLEAN)
 			-- Initialize root context with initial bindings and config
 		do
 			variables := a_variables
 			partials := a_partials
+			filter_registry := a_filter_registry
+			helper_registry := a_helper_registry
 			max_recursion_depth := a_max_recursion_depth
 			auto_escape := a_auto_escape
 			cache := a_cache
 			max_cache_size := a_max_cache_size
 			current_recursion_depth := 0
+			contract_mode := a_contract_mode
 			create sections.make (5)
+			create slots.make (5)
+			create block_overrides.make (5)
+			current_template_name := Void
+			is_partial_boundary := False
 			last_error := Void
+			is_isolated := False
 		ensure
 			variables_set: variables = a_variables
 			partials_set: partials = a_partials
+			filter_registry_set: filter_registry = a_filter_registry
+			helper_registry_set: helper_registry = a_helper_registry
 			cache_set: cache = a_cache
+			contract_mode_set: contract_mode = a_contract_mode
 		end
 
 	make_sub (a_parent: GLM_RENDER_CONTEXT)
@@ -36,14 +47,23 @@ feature {NONE} -- Initialization
 			parent_context := a_parent
 			create variables.make (5)
 			partials := a_parent.partials
+			filter_registry := a_parent.filter_registry
+			helper_registry := a_parent.helper_registry
 			sections := a_parent.sections
+			create slots.make (5)
+			block_overrides := a_parent.block_overrides
+			current_template_name := a_parent.current_template_name
+			is_partial_boundary := False
 			max_recursion_depth := a_parent.max_recursion_depth
 			current_recursion_depth := a_parent.current_recursion_depth
 			auto_escape := a_parent.auto_escape
 			cache := a_parent.cache
 			max_cache_size := a_parent.max_cache_size
+			contract_mode := a_parent.contract_mode
+			is_isolated := False
 		ensure
 			parent_set: parent_context = a_parent
+			contract_mode_inherited: contract_mode = a_parent.contract_mode
 		end
 
 feature -- Access
@@ -54,8 +74,36 @@ feature -- Access
 	partials: STRING_TABLE [STRING_32]
 			-- Registered partial templates
 
+	filter_registry: GLM_FILTER_REGISTRY
+			-- Built-in filters registry
+
+	helper_registry: STRING_TABLE [FUNCTION [TUPLE, STRING_32]]
+			-- Custom helper registry
+
 	sections: STRING_TABLE [STRING_32]
 			-- Rendered sections (stored during section evaluation, retrieved during yield)
+
+	slots: STRING_TABLE [STRING_32]
+			-- Pre-rendered slot contents for content projection
+
+	block_overrides: STRING_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE]]
+			-- Overridden blocks by name
+
+	current_template_name: detachable STRING_32
+			-- Name/path of the template currently being rendered
+
+	is_partial_boundary: BOOLEAN
+			-- Is this context a partial template boundary?
+
+	slot (a_name: READABLE_STRING_GENERAL): detachable STRING_32
+			-- Resolved slot content by name
+		do
+			if slots.has (a_name) then
+				Result := slots.item (a_name)
+			elseif not is_partial_boundary and then attached parent_context as parent then
+				Result := parent.slot (a_name)
+			end
+		end
 
 	max_recursion_depth: INTEGER
 			-- Maximum allowed recursion depth
@@ -75,6 +123,15 @@ feature -- Access
 	last_error: detachable STRING_32
 			-- Description of the last parsing or compilation error
 
+	last_contract_violation: detachable STRING_32
+			-- Description of the last contract violation
+
+	contract_mode: BOOLEAN
+			-- Is contract mode enabled?
+
+	is_isolated: BOOLEAN
+			-- Is this context isolated from parent variable lookups?
+
 	parent_context: detachable GLM_RENDER_CONTEXT
 			-- Parent scope context if nested
 
@@ -85,7 +142,7 @@ feature -- Access
 				Result := resolve_dotted_path (a_key)
 			elseif variables.has (a_key) then
 				Result := variables.item (a_key)
-			elseif attached parent_context as parent then
+			elseif not is_isolated and then attached parent_context as parent then
 				Result := parent.item (a_key)
 			end
 		end
@@ -96,7 +153,7 @@ feature -- Access
 			if a_key.to_string_32.has ('.') then
 				Result := resolve_dotted_path (a_key) /= Void
 			else
-				Result := variables.has (a_key) or else (attached parent_context as parent and then parent.has (a_key))
+				Result := variables.has (a_key) or else (not is_isolated and then attached parent_context as parent and then parent.has (a_key))
 			end
 		end
 
@@ -125,6 +182,44 @@ feature -- Scoped Context
 			depth_incremented: Result.current_recursion_depth = current_recursion_depth + 1
 		end
 
+	make_child_with (a_params: STRING_TABLE [ANY]): GLM_RENDER_CONTEXT
+			-- Create an isolated child context with initial variables `a_params` and incremented recursion depth
+		do
+			create Result.make_sub (Current)
+			Result.set_is_isolated (True)
+			Result.set_current_recursion_depth (current_recursion_depth + 1)
+			across a_params as param_cursor loop
+				Result.variables.force (param_cursor.item, param_cursor.key)
+			end
+		ensure
+			depth_incremented: Result.current_recursion_depth = current_recursion_depth + 1
+			is_isolated: Result.is_isolated
+		end
+
+	set_is_isolated (a_val: BOOLEAN)
+			-- Set `is_isolated` status
+		do
+			is_isolated := a_val
+		ensure
+			is_isolated_set: is_isolated = a_val
+		end
+
+	set_is_partial_boundary (a_val: BOOLEAN)
+			-- Set `is_partial_boundary` status
+		do
+			is_partial_boundary := a_val
+		ensure
+			is_partial_boundary_set: is_partial_boundary = a_val
+		end
+
+	set_current_template_name (a_name: READABLE_STRING_GENERAL)
+			-- Set `current_template_name`
+		do
+			create current_template_name.make_from_string (a_name.to_string_32)
+		ensure
+			current_template_name_set: attached current_template_name as name and then name.same_string_general (a_name)
+		end
+
 feature {GLM_RENDER_CONTEXT} -- Implementation
 
 	set_current_recursion_depth (a_depth: INTEGER)
@@ -144,6 +239,18 @@ feature -- Operations and Parsing
 			if attached parent_context as p then
 				p.set_error (a_error)
 			end
+		end
+
+	set_contract_violation (a_violation: STRING_32)
+			-- Set the last contract violation and propagate to parent context
+		do
+			last_contract_violation := a_violation
+			set_error ("Contract violation: " + a_violation)
+			if attached parent_context as p then
+				p.set_contract_violation (a_violation)
+			end
+		ensure
+			violation_set: last_contract_violation = a_violation
 		end
 
 
@@ -184,14 +291,55 @@ feature -- Operations and Parsing
 	render_partial (template_str: STRING_32; a_name: STRING_32; a_buffer: STRING_32)
 			-- Compile and render partial template directly into `a_buffer` using incremented depth context
 		local
+			l_slots: STRING_TABLE [STRING_32]
+		do
+			create l_slots.make (0)
+			render_partial_with_slots (template_str, a_name, Void, l_slots, a_buffer)
+		end
+
+	render_partial_with (template_str: STRING_32; a_name: STRING_32; a_params: STRING_TABLE [STRING_32]; a_buffer: STRING_32)
+			-- Compile and render partial template with parameters in an isolated child context directly into `a_buffer`
+		local
+			l_slots: STRING_TABLE [STRING_32]
+		do
+			create l_slots.make (0)
+			render_partial_with_slots (template_str, a_name, a_params, l_slots, a_buffer)
+		end
+
+	render_partial_with_slots (template_str: STRING_32; a_name: STRING_32; a_params: detachable STRING_TABLE [STRING_32]; a_slots: STRING_TABLE [STRING_32]; a_buffer: STRING_32)
+			-- Compile and render partial template with optional parameters and slots directly into `a_buffer`
+		local
 			l_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]
 			l_sub_context: GLM_RENDER_CONTEXT
+			l_resolved_vars: STRING_TABLE [ANY]
 		do
 			l_nodes := get_compiled_template_with_name (template_str, a_name)
 			if not has_error then
-				l_sub_context := incremented_depth_context
-				across l_nodes as node loop
-					node.item.render (l_sub_context, a_buffer)
+				if attached a_params as l_params then
+					create l_resolved_vars.make (l_params.count)
+					across l_params as param_cursor loop
+						l_resolved_vars.force (resolve_value (param_cursor.item), param_cursor.key)
+					end
+					l_sub_context := make_child_with (l_resolved_vars)
+				else
+					l_sub_context := incremented_depth_context
+				end
+				l_sub_context.set_current_template_name (a_name)
+				l_sub_context.set_is_partial_boundary (True)
+				across a_slots as slot_cursor loop
+					l_sub_context.slots.force (slot_cursor.item, slot_cursor.key)
+				end
+				
+				if l_sub_context.has_extends_node (l_nodes) then
+					if attached l_sub_context.resolve_inheritance_chain (l_nodes) as l_chain then
+						l_nodes := l_chain
+					end
+				end
+				
+				if not l_sub_context.has_error then
+					across l_nodes as node loop
+						node.item.render (l_sub_context, a_buffer)
+					end
 				end
 			end
 		end
@@ -211,7 +359,7 @@ feature -- Expression Evaluation
 			Result := l_expr_node.evaluate (Current)
 		end
 
-feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE} -- Expression Implementation
+feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE, GLM_VARIABLE_NODE} -- Expression Implementation
 
 	find_operator (expression: STRING_32): detachable STRING_32
 			-- Find the first operator in the expression
@@ -241,7 +389,9 @@ feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE} -- Expressi
 			l_str.left_adjust
 			l_str.right_adjust
 
-			if l_str.is_integer_8 then
+			if l_str.count >= 2 and then ((l_str.starts_with ("%"") and l_str.ends_with ("%"")) or else (l_str.starts_with ("'") and l_str.ends_with ("'"))) then
+				Result := l_str.substring (2, l_str.count - 1)
+			elseif l_str.is_integer_8 then
 				Result := l_str.to_integer_8
 			elseif l_str.is_integer_16 then
 				Result := l_str.to_integer_16
@@ -479,6 +629,201 @@ feature {GLM_EXPRESSION_NODE, GLM_RENDER_CONTEXT, GLM_HTML_TEMPLATE} -- Expressi
 			end
 			create l_item.make_from_string (s.substring (l_start, s.count))
 			Result.extend (l_item)
+		end
+
+feature -- Template Inheritance Helpers
+
+	find_extends_node (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]): detachable GLM_EXTENDS_NODE
+			-- Find the extends node at the top level of the AST
+		local
+			i: INTEGER
+			l_node: GLM_TEMPLATE_NODE
+		do
+			from
+				i := 1
+			until
+				i > a_nodes.count or else Result /= Void
+			loop
+				l_node := a_nodes.i_th (i)
+				if attached {GLM_EXTENDS_NODE} l_node as l_ext then
+					Result := l_ext
+				end
+				i := i + 1
+			end
+		end
+
+	has_extends_node (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]): BOOLEAN
+			-- Does `a_nodes' contain an extends node at the top level?
+		do
+			Result := find_extends_node (a_nodes) /= Void
+		end
+
+	resolve_template_ast (a_name: STRING_32): detachable ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			-- Resolve template content by name (checking partials first, then files) and compile it
+		local
+			l_content: detachable STRING_32
+			l_file: PLAIN_TEXT_FILE
+			l_path: STRING_32
+		do
+			-- 1. Check partials
+			if partials.has (a_name) then
+				l_content := partials.item (a_name)
+			else
+				-- 2. Check filesystem relative to current template directory, or absolute/CWD
+				create l_path.make_from_string (a_name)
+				if attached current_template_name as cur_name then
+					l_path := resolve_relative_path (cur_name, a_name)
+				end
+				
+				create l_file.make_with_name (l_path)
+				if l_file.exists and then l_file.is_readable then
+					l_file.open_read
+					l_file.read_stream (l_file.count)
+					create l_content.make_from_string (l_file.last_string.to_string_32)
+					l_file.close
+				else
+					-- If relative path failed, try direct path (relative to CWD)
+					create l_file.make_with_name (a_name)
+					if l_file.exists and then l_file.is_readable then
+						l_file.open_read
+						l_file.read_stream (l_file.count)
+						create l_content.make_from_string (l_file.last_string.to_string_32)
+						l_file.close
+					end
+				end
+			end
+			
+			if attached l_content as content then
+				Result := get_compiled_template_with_name (content, a_name)
+			else
+				set_error ("Template not found: " + a_name)
+			end
+		end
+
+	resolve_relative_path (a_base_path, a_relative_path: STRING_32): STRING_32
+			-- Resolve a_relative_path relative to the directory of a_base_path
+		local
+			i: INTEGER
+			l_dir: STRING_32
+		do
+			from
+				i := a_base_path.count
+			until
+				i < 1 or else (a_base_path.item (i) = '/' or else a_base_path.item (i) = '\')
+			loop
+				i := i - 1
+			end
+			
+			if i > 0 then
+				create l_dir.make_from_string (a_base_path.substring (1, i))
+				create Result.make (l_dir.count + a_relative_path.count)
+				Result.append (l_dir)
+				Result.append (a_relative_path)
+			else
+				Result := a_relative_path
+			end
+		end
+
+	clean_template_name (a_name: STRING_32): STRING_32
+			-- Remove leading/trailing quotes from template name
+		do
+			create Result.make_from_string (a_name)
+			Result.left_adjust
+			Result.right_adjust
+			if Result.count >= 2 and then ((Result.starts_with ("%"") and Result.ends_with ("%"")) or else (Result.starts_with ("'") and Result.ends_with ("'"))) then
+				Result := Result.substring (2, Result.count - 1)
+				Result.left_adjust
+				Result.right_adjust
+			end
+		end
+
+	resolve_inheritance_chain (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]): detachable ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			-- Resolve the inheritance chain starting from `a_nodes'.
+			-- Returns the compiled AST of the root template in the chain,
+			-- and populates `block_overrides' with the resolved overrides.
+		local
+			l_visited: ARRAYED_LIST [STRING_32]
+			l_current_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			l_extends: detachable GLM_EXTENDS_NODE
+			l_parent_name: STRING_32
+			l_parent_nodes: detachable ARRAYED_LIST [GLM_TEMPLATE_NODE]
+			l_chain: ARRAYED_LIST [ARRAYED_LIST [GLM_TEMPLATE_NODE]]
+			i: INTEGER
+		do
+			create l_visited.make (5)
+			l_visited.compare_objects
+			create l_chain.make (5)
+			
+			l_current_nodes := a_nodes
+			l_chain.extend (l_current_nodes)
+			
+			l_extends := find_extends_node (l_current_nodes)
+			from
+			until
+				l_extends = Void or else has_error
+			loop
+				l_parent_name := l_extends.parent_name
+				l_parent_name := clean_template_name (l_parent_name)
+				
+				if l_visited.has (l_parent_name) then
+					set_error ("Circular template inheritance detected: " + l_parent_name)
+					l_extends := Void
+				else
+					l_visited.extend (l_parent_name)
+					l_parent_nodes := resolve_template_ast (l_parent_name)
+					if attached l_parent_nodes as parent then
+						l_current_nodes := parent
+						l_chain.extend (l_current_nodes)
+						l_extends := find_extends_node (l_current_nodes)
+					else
+						l_extends := Void
+					end
+				end
+			end
+			
+			if not has_error then
+				-- Walk from leaf (1) to root parent (l_chain.count) to build overrides map
+				from
+					i := 1
+				until
+					i > l_chain.count
+				loop
+					collect_blocks (l_chain.i_th (i), block_overrides)
+					i := i + 1
+				end
+				Result := l_chain.i_th (l_chain.count)
+			end
+		end
+
+	collect_blocks (a_nodes: ARRAYED_LIST [GLM_TEMPLATE_NODE]; a_overrides: STRING_TABLE [ARRAYED_LIST [GLM_TEMPLATE_NODE]])
+			-- Recursively find all blocks in `a_nodes` and register them in `a_overrides` if not already present
+		local
+			l_node: GLM_TEMPLATE_NODE
+		do
+			across a_nodes as node loop
+				l_node := node.item
+				if attached {GLM_BLOCK_NODE} l_node as l_block then
+					if not a_overrides.has (l_block.name) then
+						a_overrides.force (l_block.body, l_block.name)
+					end
+					collect_blocks (l_block.body, a_overrides)
+				elseif attached {GLM_LOOP_NODE} l_node as l_loop then
+					collect_blocks (l_loop.body, a_overrides)
+				elseif attached {GLM_CONDITIONAL_NODE} l_node as l_cond then
+					collect_blocks (l_cond.true_branch, a_overrides)
+					if attached l_cond.false_branch as l_false then
+						collect_blocks (l_false, a_overrides)
+					end
+				elseif attached {GLM_SECTION_NODE} l_node as l_sec then
+					collect_blocks (l_sec.body, a_overrides)
+				elseif attached {GLM_FILL_NODE} l_node as l_fill then
+					collect_blocks (l_fill.body, a_overrides)
+				elseif attached {GLM_INCLUDE_NODE} l_node as l_inc then
+					if attached l_inc.body as l_inc_body then
+						collect_blocks (l_inc_body, a_overrides)
+					end
+				end
+			end
 		end
 
 end

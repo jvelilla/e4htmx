@@ -1034,6 +1034,51 @@ feature -- Test routines
 			assert ("render_success", l_result.same_string ("Hello"))
 		end
 
+	test_whitespace_control
+			-- Test whitespace control delimiters ({{- and -}})
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+			l_items: ARRAYED_LIST [STRING]
+		do
+			create l_template.make
+
+			-- 1. Test left trim
+			l_template.set_variable ("show", True)
+			l_result := l_template.render ("Hello, %N  %T {{- if show}}World{{end}}")
+			assert ("left_trim", l_result.same_string_general ("Hello,World"))
+
+			-- 2. Test right trim
+			l_template.set_variable ("show", True)
+			l_result := l_template.render ("Hello, {{if show -}} %N  %T World{{end}}")
+			assert ("right_trim", l_result.same_string_general ("Hello, World"))
+
+			-- 3. Test both trims in loop
+			create l_items.make (2)
+			l_items.extend ("A")
+			l_items.extend ("B")
+			l_template.set_variable ("items", l_items)
+			l_result := l_template.render (
+				"Items:%N" +
+				"{{- each item in items }}%N" +
+				"<li>{item}</li>%N" +
+				"{{- end }}%N" +
+				"Done")
+			assert ("loop_whitespace_trim", l_result.same_string_general ("Items:%N<li>A</li>%N<li>B</li>%NDone"))
+
+			-- 4. Test back-to-back trims
+			l_result := l_template.render (
+				"A%N" +
+				"{{- if show -}}%N" +
+				"B%N" +
+				"{{- end -}}%N" +
+				"{{- if show -}}%N" +
+				"C%N" +
+				"{{- end -}}%N" +
+				"D")
+			assert ("back_to_back_trims", l_result.same_string_general ("ABCD"))
+		end
+
 	test_elsif_tag
 			-- Test else if and elsif parsing and branching
 		local
@@ -1182,6 +1227,310 @@ feature -- Test routines
 			assert ("reflection_attributes", l_result.same_string_general ("5 True my_layout 42 Buy milk 1"))
 		end
 
+	test_builtin_filters
+			-- Test built-in filters (upper, lower, truncate, date_format, number_format, currency)
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+			l_date: DATE
+		do
+			create l_template.make
+			
+			-- Test upper
+			l_template.set_variable ("name", "john")
+			l_result := l_template.render ("{name | upper}")
+			assert ("upper_filter", l_result.same_string_general ("JOHN"))
+			
+			-- Test lower
+			l_template.set_variable ("name", "JOHN")
+			l_result := l_template.render ("{name | lower}")
+			assert ("lower_filter", l_result.same_string_general ("john"))
+			
+			-- Test truncate
+			l_template.set_variable ("text", "hello world")
+			l_result := l_template.render ("{text | truncate: 5}")
+			assert ("truncate_filter", l_result.same_string_general ("hello"))
+			
+			-- Test date_format
+			create l_date.make (2026, 5, 31)
+			l_template.set_variable ("date", l_date)
+			l_result := l_template.render ("{date | date_format: %"dd/MM/yyyy%"}")
+			assert ("date_format_filter", l_result.same_string_general ("31/05/2026"))
+			
+			-- Test number_format
+			l_template.set_variable ("val", 12.3456)
+			l_result := l_template.render ("{val | number_format: 2}")
+			assert ("number_format_filter", l_result.same_string_general ("12.35"))
+			
+			-- Test currency
+			l_template.set_variable ("price", 125.5)
+			l_result := l_template.render ("{price | currency: %"USD%"}")
+			assert ("currency_usd_filter", l_result.same_string_general ("$125.50"))
+			
+			l_result := l_template.render ("{price | currency: %"EUR%"}")
+			assert ("currency_eur_filter", l_result.same_string_general ({STRING_32} "%/8364/125.50"))
+		end
 
+	test_filter_chaining
+			-- Test chaining multiple filters in sequence
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.set_variable ("name", "John Doe")
+			l_result := l_template.render ("{name | lower | truncate: 4}")
+			assert ("chaining", l_result.same_string_general ("john"))
+		end
+
+	test_custom_helpers
+			-- Test custom helpers registered as named filters
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+		do
+			create l_template.make
+			l_template.register_helper ("gravatar_url", agent (email: ANY): STRING_32
+				do
+					Result := "https://gravatar.com/avatar/" + email.out.to_string_32
+				end)
+			l_template.set_variable ("email", "test@example.com")
+			l_result := l_template.render ("{email | gravatar_url | upper}")
+			assert ("custom_helper", l_result.same_string_general ("HTTPS://GRAVATAR.COM/AVATAR/TEST@EXAMPLE.COM"))
+		end
+
+	test_parameterized_include_basic
+			-- Test basic parameterized include functionality
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("user_card", "<div>Name: {name}, Role: {role}</div>")
+			l_template.set_variable ("user_name", "Javier")
+			l_template.set_variable ("user_role", "Architect")
+			
+			l_result := l_template.render ("{{include user_card with name=user_name, role=user_role}}")
+			assert ("basic_param_include", l_result.same_string ("<div>Name: Javier, Role: Architect</div>"))
+		end
+
+	test_parameterized_include_isolation
+			-- Test that parent context variables are NOT leaked to parameterized includes
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("isolated_card", "<div>Name: {name}, ParentVar: {parent_var}</div>")
+			l_template.set_variable ("name", "Local")
+			l_template.set_variable ("parent_var", "Leak")
+			
+			l_result := l_template.render ("{{include isolated_card with name=name}}")
+			assert ("isolated_param_include", l_result.same_string ("<div>Name: Local, ParentVar: {parent_var}</div>"))
+		end
+
+	test_parameterized_include_expression_resolution
+			-- Test that parameters can be resolved from dotted paths and literals
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_user: STRING_TABLE [ANY]
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("expr_partial", "{id}: {name} ({count})")
+			
+			create l_user.make (2)
+			l_user.force (42, "id")
+			l_user.force ("Alice", "name")
+			l_template.set_variable ("user", l_user)
+			l_template.set_variable ("limit", 10)
+			
+			l_result := l_template.render ("{{include expr_partial with id=user.id, name=user.name, count=limit}}")
+			assert ("expression_param_include", l_result.same_string ("42: Alice (10)"))
+		end
+
+	test_parameterized_include_with_commas
+			-- Test that parameter values with quoted strings containing commas are parsed correctly
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("greeting_card", "Message: {msg}, From: {from}")
+			l_template.set_variable ("author", "Bob")
+			
+			l_result := l_template.render ("{{include greeting_card with msg=%"Hello, world!%", from=author}}")
+			assert ("commas_in_quotes_include", l_result.same_string ("Message: Hello, world!, From: Bob"))
+		end
+
+	test_slots_basic
+			-- Test basic slot rendering with named slots and fills
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_basic", "<div class=%"card%"><div class=%"card-header%">{{slot header}}</div><div class=%"card-body%">{{slot content}}</div></div>")
+			
+			l_result := l_template.render ("{{include card_basic}}{{fill header}}<h2>My Title</h2>{{end}}{{fill content}}<p>Body text here.</p>{{end}}{{end}}")
+			assert ("basic_slots_rendered", l_result.same_string ("<div class=%"card%"><div class=%"card-header%"><h2>My Title</h2></div><div class=%"card-body%"><p>Body text here.</p></div></div>"))
+		end
+
+	test_slots_nested
+			-- Test nested slot rendering to ensure slot scopes do not bleed or collide
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_nested_outer", "<div class=%"outer%">{{slot main}}</div>")
+			l_template.register_partial ("card_nested_inner", "<span class=%"inner%">{{slot label}}</span>")
+			
+			l_result := l_template.render ("{{include card_nested_outer}}{{fill main}}Outer content and {{include card_nested_inner}}{{fill label}}Inner Label{{end}}{{end}}{{end}}{{end}}")
+			assert ("nested_slots_rendered", l_result.same_string ("<div class=%"outer%">Outer content and <span class=%"inner%">Inner Label</span></div>"))
+		end
+
+	test_slots_missing
+			-- Test that missing fills are rendered as empty strings
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_missing", "<div class=%"card%"><div class=%"card-header%">{{slot header}}</div><div class=%"card-body%">{{slot content}}</div></div>")
+			
+			l_result := l_template.render ("{{include card_missing}}{{fill content}}<p>Body text here.</p>{{end}}{{end}}")
+			assert ("missing_fill_rendered", l_result.same_string ("<div class=%"card%"><div class=%"card-header%"></div><div class=%"card-body%"><p>Body text here.</p></div></div>"))
+		end
+
+	test_slots_conditional
+			-- Test slots placed inside conditional blocks in component templates
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_conditional", "<div class=%"card%">{{if show_header}}<div class=%"card-header%">{{slot header}}</div>{{else}}No header{{end}}</div>")
+			
+			l_template.set_variable ("show_header", True)
+			l_result := l_template.render ("{{include card_conditional}}{{fill header}}<h2>My Title</h2>{{end}}{{end}}")
+			assert ("conditional_slot_true", l_result.same_string ("<div class=%"card%"><div class=%"card-header%"><h2>My Title</h2></div></div>"))
+			
+			l_template.set_variable ("show_header", False)
+			l_result := l_template.render ("{{include card_conditional}}{{fill header}}<h2>My Title</h2>{{end}}{{end}}")
+			assert ("conditional_slot_false", l_result.same_string ("<div class=%"card%">No header</div>"))
+		end
+
+	test_slots_dynamic_context
+			-- Test that fills containing parent-context variables are resolved correctly
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("card_dynamic", "<div class=%"card%">{{slot content}}</div>")
+			l_template.set_variable ("user_name", "Javier")
+			
+			l_result := l_template.render ("{{include card_dynamic}}{{fill content}}<p>Hello, {user_name}!</p>{{end}}{{end}}")
+			assert ("dynamic_slot_variables", l_result.same_string ("<div class=%"card%"><p>Hello, Javier!</p></div>"))
+		end
+
+	test_basic_inheritance
+			-- Test basic template inheritance layout and block overrides
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("base", "<html><body>{{block header}}<header>Default Header</header>{{end}}{{block content}}{{end}}</body></html>")
+			
+			l_result := l_template.render ("{{extends base}}{{block content}}<h1>My Content</h1>{{end}}")
+			assert ("basic_inheritance", l_result.same_string ("<html><body><header>Default Header</header><h1>My Content</h1></body></html>"))
+		end
+
+	test_multi_level_inheritance
+			-- Test multi-level template inheritance (base -> layout -> page)
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("base", "<html><body>{{block header}}Base Header{{end}} - {{block content}}Base Content{{end}}</body></html>")
+			l_template.register_partial ("layout", "{{extends base}}{{block header}}Layout Header{{end}}")
+			
+			l_result := l_template.render ("{{extends layout}}{{block content}}Page Content{{end}}")
+			assert ("multi_level_inheritance", l_result.same_string ("<html><body>Layout Header - Page Content</body></html>"))
+		end
+
+	test_default_block_content
+			-- Test default block content rendering when child doesn't override
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("base", "<html><body>{{block header}}Default Header{{end}}</body></html>")
+			
+			l_result := l_template.render ("{{extends base}}")
+			assert ("default_block_content", l_result.same_string ("<html><body>Default Header</body></html>"))
+		end
+
+	test_relative_file_resolution
+			-- Test extending parent templates from filesystem using relative paths
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_base_file, l_child_file: PLAIN_TEXT_FILE
+			l_result: STRING
+		do
+			create l_base_file.make_open_write ("test_base.html")
+			l_base_file.put_string ("Base: {{block text}}Default{{end}}")
+			l_base_file.close
+			
+			create l_child_file.make_open_write ("test_child.html")
+			l_child_file.put_string ("{{extends test_base.html}}{{block text}}Overridden{{end}}")
+			l_child_file.close
+			
+			create l_template.make
+			l_result := l_template.render_file ("test_child.html")
+			assert ("relative_file_inheritance", l_result.same_string ("Base: Overridden"))
+			
+			-- Clean up
+			create l_base_file.make_with_name ("test_base.html")
+			if l_base_file.exists then
+				l_base_file.delete
+			end
+			create l_child_file.make_with_name ("test_child.html")
+			if l_child_file.exists then
+				l_child_file.delete
+			end
+		end
+
+	test_circular_extends
+			-- Test that circular extends inheritance is detected and reports error
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			l_template.register_partial ("a", "{{extends b}}")
+			l_template.register_partial ("b", "{{extends a}}")
+			
+			l_result := l_template.render ("{{extends a}}")
+			assert ("circular_error_flag", l_template.has_error)
+			assert ("circular_error_msg", attached l_template.last_error as err and then err.has_substring ("Circular template inheritance"))
+		end
+
+	test_missing_parent_template
+			-- Test that missing parent template reports error
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING
+		do
+			create l_template.make
+			
+			l_result := l_template.render ("{{extends non_existent_parent.html}}")
+			assert ("missing_parent_error_flag", l_template.has_error)
+			assert ("missing_parent_error_msg", attached l_template.last_error as err and then err.has_substring ("Template not found"))
+		end
 
 end
