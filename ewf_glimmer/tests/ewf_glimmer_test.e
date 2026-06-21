@@ -36,4 +36,21 @@ feature -- Test routines
 			assert ("context_compiled", l_context = Void)
 		end
 
+	test_utf8_response
+			-- Test response boundary encoding and character validation helper
+		local
+			l_headers: HTTP_HEADER
+			l_unicode: STRING_32
+			l_utf8: STRING_8
+		do
+			create l_headers.make
+			l_headers.put_content_type ("text/html; charset=utf-8")
+			assert ("header_content_type", l_headers.string.has_substring ("Content-Type: text/html; charset=utf-8"))
+
+			l_unicode := {STRING_32} "¡Hola Mundo! 👋 Ramón 🇪🇸"
+			l_utf8 := {GLM_STRING_HELPERS}.utf_32_to_utf_8 (l_unicode)
+			assert ("is_valid_utf_8", {GLM_STRING_HELPERS}.is_valid_utf_8 (l_utf8))
+			assert ("utf_8_roundtrip", {GLM_STRING_HELPERS}.utf_8_to_utf_32 (l_utf8).same_string (l_unicode))
+		end
+
 end

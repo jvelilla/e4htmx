@@ -19,9 +19,11 @@ feature -- Rendering
 			a_buffer.append (escape_html (a_name))
 			if a_value /= Void then
 				l_type_name := a_value.generating_type.name.to_string_32
-				a_buffer.append (" (" + escape_html (l_type_name) + ")")
+				a_buffer.append ({STRING_32} " (")
+				a_buffer.append (escape_html (l_type_name))
+				a_buffer.append ({STRING_32} ")")
 			else
-				a_buffer.append (" (Void)")
+				a_buffer.append ({STRING_32} " (Void)")
 			end
 			a_buffer.append ("</summary>%N")
 			a_buffer.append ("  <div style=%"padding: 10px; overflow-x: auto;%">%N")
@@ -113,19 +115,25 @@ feature {NONE} -- Formatting Implementation
 						l_row_style := "background: #ffffff; border-bottom: 1px solid #e2e8f0;"
 					end
 					
-					a_buffer.append ("        <tr style=%"" + l_row_style + "%">%N")
-					a_buffer.append ("          <td style=%"padding: 8px; font-weight: bold; color: #4a5568;%">" + escape_html (cursor.key) + "</td>%N")
+					a_buffer.append ({STRING_32} "        <tr style=%"" )
+					a_buffer.append (l_row_style)
+					a_buffer.append ({STRING_32} "%">%N" )
+					a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; font-weight: bold; color: #4a5568;%">" )
+					a_buffer.append (escape_html (cursor.key))
+					a_buffer.append ({STRING_32} "</td>%N" )
 					if l_val /= Void then
 						l_type_name := l_val.generating_type.name.to_string_32
-						a_buffer.append ("          <td style=%"padding: 8px; color: #718096;%">" + escape_html (l_type_name) + "</td>%N")
-						a_buffer.append ("          <td style=%"padding: 8px;%">")
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #718096;%">" )
+						a_buffer.append (escape_html (l_type_name))
+						a_buffer.append ({STRING_32} "</td>%N" )
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px;%">" )
 						render_value_short (l_val, a_buffer)
-						a_buffer.append ("</td>%N")
+						a_buffer.append ({STRING_32} "</td>%N" )
 					else
-						a_buffer.append ("          <td style=%"padding: 8px; color: #718096;%">Void</td>%N")
-						a_buffer.append ("          <td style=%"padding: 8px; color: #a0aec0;%">Void</td>%N")
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #718096;%">Void</td>%N" )
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #a0aec0;%">Void</td>%N" )
 					end
-					a_buffer.append ("        </tr>%N")
+					a_buffer.append ({STRING_32} "        </tr>%N" )
 					l_count := l_count + 1
 				end
 			end
@@ -144,14 +152,20 @@ feature {NONE} -- Formatting Implementation
 		do
 			if is_basic_value (obj) then
 				if attached {READABLE_STRING_GENERAL} obj as s then
-					a_buffer.append ("&quot;" + escape_html (s.to_string_32) + "&quot;")
+					a_buffer.append ({STRING_32} "&quot;")
+					a_buffer.append (escape_html (s.to_string_32))
+					a_buffer.append ({STRING_32} "&quot;")
 				else
 					a_buffer.append (escape_html (obj.out.to_string_32))
 				end
 			elseif attached {ITERABLE [detachable ANY]} obj as l_iterable then
-				a_buffer.append ("[Collection of " + escape_html (obj.generating_type.name.to_string_32) + "]")
+				a_buffer.append ({STRING_32} "[Collection of ")
+				a_buffer.append (escape_html (obj.generating_type.name.to_string_32))
+				a_buffer.append ({STRING_32} "]")
 			else
-				a_buffer.append ("[" + escape_html (obj.generating_type.name.to_string_32) + " ")
+				a_buffer.append ({STRING_32} "[")
+				a_buffer.append (escape_html (obj.generating_type.name.to_string_32))
+				a_buffer.append ({STRING_32} " ")
 				create l_internal
 				l_first := True
 				from
@@ -160,14 +174,17 @@ feature {NONE} -- Formatting Implementation
 					i > l_internal.field_count (obj) or i > 4
 				loop
 					if not l_first then
-						a_buffer.append (", ")
+						a_buffer.append ({STRING_32} ", ")
 					end
-					a_buffer.append (escape_html (l_internal.field_name (i, obj).to_string_32) + "=")
+					a_buffer.append (escape_html (l_internal.field_name (i, obj).to_string_32))
+					a_buffer.append ({STRING_32} "=")
 					l_val := l_internal.field (i, obj)
 					if l_val /= Void then
 						if is_basic_value (l_val) then
 							if attached {READABLE_STRING_GENERAL} l_val as s then
-								a_buffer.append ("&quot;" + escape_html (s.to_string_32) + "&quot;")
+								a_buffer.append ({STRING_32} "&quot;")
+								a_buffer.append (escape_html (s.to_string_32))
+								a_buffer.append ({STRING_32} "&quot;")
 							else
 								a_buffer.append (escape_html (l_val.out.to_string_32))
 							end
@@ -196,9 +213,11 @@ feature {NONE} -- Formatting Implementation
 			l_count: INTEGER
 		do
 			if is_basic_value (obj) then
-				a_buffer.append ("<pre style=%"margin: 0; padding: 5px; font-size: 14px;%">")
+				a_buffer.append ({STRING_32} "<pre style=%"margin: 0; padding: 5px; font-size: 14px;%">")
 				if attached {READABLE_STRING_GENERAL} obj as s then
-					a_buffer.append ("&quot;" + escape_html (s.to_string_32) + "&quot;")
+					a_buffer.append ({STRING_32} "&quot;")
+					a_buffer.append (escape_html (s.to_string_32))
+					a_buffer.append ({STRING_32} "&quot;")
 				else
 					a_buffer.append (escape_html (obj.out.to_string_32))
 				end
@@ -230,18 +249,24 @@ feature {NONE} -- Formatting Implementation
 						l_row_style := "background: #ffffff; border-bottom: 1px solid #e2e8f0;"
 					end
 					
-					a_buffer.append ("        <tr style=%"" + l_row_style + "%">%N")
-					a_buffer.append ("          <td style=%"padding: 8px; font-weight: bold; color: #4a5568;%">" + escape_html (l_internal.field_name (i, obj).to_string_32) + "</td>%N")
+					a_buffer.append ({STRING_32} "        <tr style=%"" )
+					a_buffer.append (l_row_style)
+					a_buffer.append ({STRING_32} "%">%N" )
+					a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; font-weight: bold; color: #4a5568;%">" )
+					a_buffer.append (escape_html (l_internal.field_name (i, obj).to_string_32))
+					a_buffer.append ({STRING_32} "</td>%N" )
 					if l_val /= Void then
-						a_buffer.append ("          <td style=%"padding: 8px; color: #718096;%">" + escape_html (l_val.generating_type.name.to_string_32) + "</td>%N")
-						a_buffer.append ("          <td style=%"padding: 8px;%">")
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #718096;%">" )
+						a_buffer.append (escape_html (l_val.generating_type.name.to_string_32))
+						a_buffer.append ({STRING_32} "</td>%N" )
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px;%">" )
 						render_value_short (l_val, a_buffer)
-						a_buffer.append ("</td>%N")
+						a_buffer.append ({STRING_32} "</td>%N" )
 					else
-						a_buffer.append ("          <td style=%"padding: 8px; color: #718096;%">Void</td>%N")
-						a_buffer.append ("          <td style=%"padding: 8px; color: #a0aec0;%">Void</td>%N")
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #718096;%">Void</td>%N" )
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #a0aec0;%">Void</td>%N" )
 					end
-					a_buffer.append ("        </tr>%N")
+					a_buffer.append ({STRING_32} "        </tr>%N" )
 					l_count := l_count + 1
 					i := i + 1
 				end
@@ -304,8 +329,12 @@ feature {NONE} -- Formatting Implementation
 							l_row_style := "background: #ffffff; border-bottom: 1px solid #e2e8f0;"
 						end
 						
-						a_buffer.append ("        <tr style=%"" + l_row_style + "%">%N")
-						a_buffer.append ("          <td style=%"padding: 8px; color: #718096;%">" + i.out + "</td>%N")
+						a_buffer.append ({STRING_32} "        <tr style=%"" )
+						a_buffer.append (l_row_style)
+						a_buffer.append ({STRING_32} "%">%N" )
+						a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #718096;%">" )
+						a_buffer.append (i.out.to_string_32)
+						a_buffer.append ({STRING_32} "</td>%N" )
 						a_buffer.append ("          <td style=%"padding: 8px;%">")
 						if l_val /= Void then
 							render_value_short (l_val, a_buffer)
@@ -342,8 +371,12 @@ feature {NONE} -- Formatting Implementation
 								l_row_style := "background: #ffffff; border-bottom: 1px solid #e2e8f0;"
 							end
 							
-							a_buffer.append ("        <tr style=%"" + l_row_style + "%">%N")
-							a_buffer.append ("          <td style=%"padding: 8px; color: #718096;%">" + i.out + "</td>%N")
+							a_buffer.append ({STRING_32} "        <tr style=%"" )
+							a_buffer.append (l_row_style)
+							a_buffer.append ({STRING_32} "%">%N" )
+							a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #718096;%">" )
+							a_buffer.append (i.out.to_string_32)
+							a_buffer.append ({STRING_32} "</td>%N" )
 							a_buffer.append ("          <td style=%"padding: 8px;%">")
 							if l_val /= Void then
 								render_value_short (l_val, a_buffer)
@@ -367,7 +400,9 @@ feature {NONE} -- Formatting Implementation
 						until
 							j > l_internal.field_count (l_first_item)
 						loop
-							a_buffer.append ("          <th style=%"padding: 8px;%">" + escape_html (l_internal.field_name (j, l_first_item).to_string_32) + "</th>%N")
+							a_buffer.append ({STRING_32} "          <th style=%"padding: 8px;%">" )
+							a_buffer.append (escape_html (l_internal.field_name (j, l_first_item).to_string_32))
+							a_buffer.append ({STRING_32} "</th>%N" )
 							j := j + 1
 						end
 						a_buffer.append ("        </tr>%N")
@@ -386,8 +421,12 @@ feature {NONE} -- Formatting Implementation
 								l_row_style := "background: #ffffff; border-bottom: 1px solid #e2e8f0;"
 							end
 							
-							a_buffer.append ("        <tr style=%"" + l_row_style + "%">%N")
-							a_buffer.append ("          <td style=%"padding: 8px; color: #718096;%">" + i.out + "</td>%N")
+							a_buffer.append ({STRING_32} "        <tr style=%"" )
+							a_buffer.append (l_row_style)
+							a_buffer.append ({STRING_32} "%">%N" )
+							a_buffer.append ({STRING_32} "          <td style=%"padding: 8px; color: #718096;%">" )
+							a_buffer.append (i.out.to_string_32)
+							a_buffer.append ({STRING_32} "</td>%N" )
 							
 							if l_val /= Void then
 								from

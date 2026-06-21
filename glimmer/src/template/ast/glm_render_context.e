@@ -245,7 +245,7 @@ feature -- Operations and Parsing
 			-- Set the last contract violation and propagate to parent context
 		do
 			last_contract_violation := a_violation
-			set_error ("Contract violation: " + a_violation)
+			set_error ({STRING_32} "Contract violation: " + a_violation)
 			if attached parent_context as p then
 				p.set_contract_violation (a_violation)
 			end
@@ -696,7 +696,7 @@ feature -- Template Inheritance Helpers
 			if attached l_content as content then
 				Result := get_compiled_template_with_name (content, a_name)
 			else
-				set_error ("Template not found: " + a_name)
+				set_error ({STRING_32} "Template not found: " + a_name)
 			end
 		end
 
@@ -766,7 +766,7 @@ feature -- Template Inheritance Helpers
 				l_parent_name := clean_template_name (l_parent_name)
 				
 				if l_visited.has (l_parent_name) then
-					set_error ("Circular template inheritance detected: " + l_parent_name)
+					set_error ({STRING_32} "Circular template inheritance detected: " + l_parent_name)
 					l_extends := Void
 				else
 					l_visited.extend (l_parent_name)

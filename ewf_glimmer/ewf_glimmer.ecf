@@ -31,7 +31,7 @@
 	<target name="tests" extends="ewf_glimmer">
 		<root class="ANY" feature="default_create"/>
 		<library name="testing" location="$ISE_LIBRARY\library\testing\testing.ecf"/>
-		<cluster name="testcases" location=".\tests\" recursive="true">
+		<cluster name="testcases" location="tests" recursive="true">
 			<option manifest_array_type="mismatch_warning"/>
 		</cluster>
 	</target>

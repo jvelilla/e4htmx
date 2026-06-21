@@ -1533,4 +1533,33 @@ feature -- Test routines
 			assert ("missing_parent_error_msg", attached l_template.last_error as err and then err.has_substring ("Template not found"))
 		end
 
+	test_unicode_rendering_complex
+			-- Test rendering complex HTML templates with Unicode accents and emojis
+		local
+			l_template: GLM_HTML_TEMPLATE
+			l_result: STRING_32
+			l_items: ARRAYED_LIST [STRING_32]
+		do
+			create l_template.make
+			l_template.set_variable ("greeting", {STRING_32} "¡Hola Mundo! 👋")
+			l_template.set_variable ("user", {STRING_32} "Ramón 🇪🇸")
+			
+			create l_items.make (3)
+			l_items.extend ({STRING_32} "Café ☕")
+			l_items.extend ({STRING_32} "Mañana ☀️")
+			l_items.extend ({STRING_32} "Fútbol ⚽")
+			l_template.set_variable ("todo_list", l_items)
+			
+			l_result := l_template.render (
+				"<h1>{greeting}</h1>%N" +
+				"<p>User: {user}</p>%N" +
+				"<ul>{{each item in todo_list}}<li>{item}</li>{{end}}</ul>"
+			)
+			
+			assert ("unicode_rendering_complex", l_result.same_string ({STRING_32} "<h1>¡Hola Mundo! 👋</h1>%N" +
+				"<p>User: Ramón 🇪🇸</p>%N" +
+				"<ul><li>Café ☕</li><li>Mañana ☀️</li><li>Fútbol ⚽</li></ul>"
+			))
+		end
+
 end

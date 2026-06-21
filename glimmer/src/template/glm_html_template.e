@@ -215,7 +215,7 @@ feature -- Element Change
 				l_file.close
 				register_partial (name, l_template)
 			else
-				last_error := "Partial file not found or not readable: " + filename.to_string_32
+				last_error := {STRING_32} "Partial file not found or not readable: " + filename.to_string_32
 			end
 		end
 
@@ -250,7 +250,7 @@ feature -- Operations
 				l_file.close
 				Result := render_with_name (l_template, filename)
 			else
-				last_error := "Template file not found or not readable: " + filename.to_string_32
+				last_error := {STRING_32} "Template file not found or not readable: " + filename.to_string_32
 				create Result.make_empty
 			end
 		end
@@ -301,9 +301,11 @@ feature -- Operations
 					l_sec_name := sections_to_render.item (i).to_string_32
 					l_sec_content := render_section_internal (template, l_sec_name, a_name)
 					
-					Result.append ("<div hx-swap-oob=%"true%" id=%"" + l_sec_name + "%">")
+					Result.append ({STRING_32} "<div hx-swap-oob=%"true%" id=%"" )
+					Result.append (l_sec_name)
+					Result.append ({STRING_32} "%">" )
 					Result.append (l_sec_content)
-					Result.append ("</div>")
+					Result.append ({STRING_32} "</div>" )
 					
 					i := i + 1
 				end
@@ -606,7 +608,7 @@ feature {NONE} -- Implementation
 					Result := l_buffer
 				end
 			else
-				last_error := "Section not found: " + l_sec_name
+				last_error := {STRING_32} "Section not found: " + l_sec_name
 				create Result.make_empty
 			end
 		end
