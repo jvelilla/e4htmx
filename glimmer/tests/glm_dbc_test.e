@@ -18,7 +18,7 @@ feature -- Test routines
 			create l_template.make
 			l_template.set_contract_mode (True)
 			l_template.set_variable ("user", "Javier")
-			
+
 			l_result := l_template.render ("{{require user}}Hello {user}")
 			assert ("no_errors", not l_template.has_error)
 			assert ("no_violations", not l_template.has_contract_violation)
@@ -34,7 +34,7 @@ feature -- Test routines
 			create l_template.make
 			l_template.set_contract_mode (True)
 			-- Do not set variable "user"
-			
+
 			l_result := l_template.render ("{{require user}}Hello {user}")
 			assert ("has_error", l_template.has_error)
 			assert ("has_violation", l_template.has_contract_violation)
@@ -52,7 +52,7 @@ feature -- Test routines
 			l_template.set_contract_mode (True)
 			l_template.set_variable ("user", "Javier")
 			l_template.set_variable ("role", "Admin")
-			
+
 			l_result := l_template.render ("{{require user, role}}User: {user}, Role: {role}")
 			assert ("no_errors", not l_template.has_error)
 			assert ("rendered_correctly", l_result.same_string ("User: Javier, Role: Admin"))
@@ -68,7 +68,7 @@ feature -- Test routines
 			l_template.set_contract_mode (True)
 			l_template.set_variable ("user", "Javier")
 			-- "role" is missing
-			
+
 			l_result := l_template.render ("{{require user, role}}User: {user}")
 			assert ("has_error", l_template.has_error)
 			assert ("has_violation", l_template.has_contract_violation)
@@ -85,7 +85,7 @@ feature -- Test routines
 			create l_template.make
 			l_template.set_contract_mode (True)
 			l_template.set_variable ("item_count", 5)
-			
+
 			l_result := l_template.render ("{{require item_count > 0}}Count is {item_count}")
 			assert ("no_errors", not l_template.has_error)
 			assert ("rendered_correctly", l_result.same_string ("Count is 5"))
@@ -100,7 +100,7 @@ feature -- Test routines
 			create l_template.make
 			l_template.set_contract_mode (True)
 			l_template.set_variable ("item_count", 0)
-			
+
 			l_result := l_template.render ("{{require item_count > 0}}Count is {item_count}")
 			assert ("has_error", l_template.has_error)
 			assert ("has_violation", l_template.has_contract_violation)
@@ -116,7 +116,7 @@ feature -- Test routines
 			create l_template.make
 			l_template.set_contract_mode (False)
 			-- Do not set "user"
-			
+
 			l_result := l_template.render ("{{require user}}Hello {user}")
 			assert ("no_errors", not l_template.has_error)
 			assert ("no_violations", not l_template.has_contract_violation)
@@ -132,7 +132,7 @@ feature -- Test routines
 			create l_template.make
 			l_template.set_contract_mode (True)
 			l_template.set_variable ("name", "Javier")
-			
+
 			l_result := l_template.render ("{dump name}")
 			assert ("contains_details", l_result.has_substring ("<details"))
 			assert ("contains_summary", l_result.has_substring ("dump: name"))
@@ -149,7 +149,7 @@ feature -- Test routines
 			l_template.set_contract_mode (True)
 			l_template.set_variable ("name", "Javier")
 			l_template.set_variable ("age", 30)
-			
+
 			l_result := l_template.render ("{dump_context}")
 			assert ("contains_details", l_result.has_substring ("<details"))
 			assert ("contains_summary", l_result.has_substring ("dump_context"))
@@ -167,8 +167,8 @@ feature -- Test routines
 			create l_template.make
 			l_template.set_contract_mode (False)
 			l_template.set_variable ("name", "Javier")
-			
-			l_result := l_template.render ("{dump name}")
+
+			l_result := l_template.render ({STRING_8}"{dump name}")
 			assert ("rendered_empty", l_result.is_empty)
 		end
 

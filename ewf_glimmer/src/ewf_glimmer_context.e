@@ -130,29 +130,23 @@ feature -- Response Rendering
 
 	html (a_html: READABLE_STRING_GENERAL)
 			-- Send HTML response.
-		local
-			l_conv: UTF_CONVERTER
 		do
 			headers.put_content_type ("text/html; charset=utf-8")
-			send (l_conv.utf_32_string_to_utf_8_string_8 (a_html))
+			send ({GLM_STRING_HELPERS}.utf_32_to_utf_8 (a_html))
 		end
 
 	text (a_text: READABLE_STRING_GENERAL)
 			-- Send plain text response.
-		local
-			l_conv: UTF_CONVERTER
 		do
 			headers.put_content_type ("text/plain; charset=utf-8")
-			send (l_conv.utf_32_string_to_utf_8_string_8 (a_text))
+			send ({GLM_STRING_HELPERS}.utf_32_to_utf_8 (a_text))
 		end
 
 	json (a_json: READABLE_STRING_GENERAL)
 			-- Send JSON response.
-		local
-			l_conv: UTF_CONVERTER
 		do
 			headers.put_content_type (Content_type_json)
-			send (l_conv.utf_32_string_to_utf_8_string_8 (a_json))
+			send ({GLM_STRING_HELPERS}.utf_32_to_utf_8 (a_json))
 		end
 
 	empty
@@ -189,11 +183,11 @@ feature -- Response Rendering
 			apply_htmx_headers (a_template, headers)
 			if a_template.has_contract_violation and then attached a_template.last_contract_violation as l_violation then
 				set_status ({HTTP_STATUS_CODE}.unprocessable_entity)
-				headers.put_header_key_value ("HX-Trigger", "{\%"glimmer:contract-violation\%": \%"" + l_violation.to_string_8 + "%"}")
-				html (Error_div_start + "Contract violation: " + l_violation.to_string_8 + Error_div_end)
+				headers.put_header_key_value ("HX-Trigger", "{\%"glimmer:contract-violation\%": \%"" + {GLM_STRING_HELPERS}.utf_32_to_utf_8 (l_violation) + "%"}")
+				html (Error_div_start.to_string_32 + {STRING_32} "Contract violation: " + l_violation + Error_div_end.to_string_32)
 			elseif a_template.has_error and then attached a_template.last_error as l_err then
 				set_status ({HTTP_STATUS_CODE}.internal_server_error)
-				html (Error_div_start + l_err.to_string_8 + Error_div_end)
+				html (Error_div_start.to_string_32 + l_err + Error_div_end.to_string_32)
 			else
 				html (l_html)
 			end
@@ -208,11 +202,11 @@ feature -- Response Rendering
 			apply_htmx_headers (a_template, headers)
 			if a_template.has_contract_violation and then attached a_template.last_contract_violation as l_violation then
 				set_status ({HTTP_STATUS_CODE}.unprocessable_entity)
-				headers.put_header_key_value ("HX-Trigger", "{\%"glimmer:contract-violation\%": \%"" + l_violation.to_string_8 + "%"}")
-				html (Error_div_start + "Contract violation: " + l_violation.to_string_8 + Error_div_end)
+				headers.put_header_key_value ("HX-Trigger", "{\%"glimmer:contract-violation\%": \%"" + {GLM_STRING_HELPERS}.utf_32_to_utf_8 (l_violation) + "%"}")
+				html (Error_div_start.to_string_32 + {STRING_32} "Contract violation: " + l_violation + Error_div_end.to_string_32)
 			elseif a_template.has_error and then attached a_template.last_error as l_err then
 				set_status ({HTTP_STATUS_CODE}.internal_server_error)
-				html (Error_div_start + l_err.to_string_8 + Error_div_end)
+				html (Error_div_start.to_string_32 + l_err + Error_div_end.to_string_32)
 			else
 				html (l_html)
 			end
