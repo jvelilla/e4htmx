@@ -1,0 +1,7 @@
+/* another.css */
+:root {
+  --primary: #10b981;
+  --primary-hover: #059669;
+  --primary-glow: rgba(16, 185, 129, 0.15);
+  --accent: #34d399;
+}

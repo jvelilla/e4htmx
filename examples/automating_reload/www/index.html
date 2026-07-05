@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Automating Reload (Client)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 2rem;
+        }
+    </style>
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+    <script>
+        // Connects to the EWF built-in WebSocket server at /reload
+        try {
+            const ws = new WebSocket('ws://' + window.location.host + '/reload');
+            ws.addEventListener('close', event => {
+                setTimeout(() => { location.reload(); }, 500);
+            });
+            ws.addEventListener('message', event => {
+                if (event.data === 'reload') location.reload();
+            });
+        } catch (e) {
+            console.log("WebSocket connection failed.");
+        }
+    </script>
+</head>
+
+<body>
+    <h1>Automating Reload (EWF WebSockets)</h1>
+    <p>This example demonstrates the client-side code needed for automating browser reloads via WebSockets, completely
+        integrated into the Eiffel Web Framework server!</p>
+    <p>To test this, try editing this `index.html` file in your editor while the server is running. As soon as you save,
+        the WebSocket server will detect the file change and command this tab to reload!</p>
+    <p>Esto es tun tests</p>
+    <p>Este es un parrafo para que se vea el cambio</p>
+</body>
+
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Adding Request Headers</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; }
+        button { margin-right: 1rem; margin-bottom: 1rem; }
+    </style>
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+    <script>
+        window.onload = () => {
+            document.body.addEventListener('htmx:configRequest', event => {
+                event.detail.headers['X-Token'] = 'my-token';
+            });
+        };
+    </script>
+</head>
+<body>
+    <h1>Adding Request Headers</h1>
+    <div>
+        <button hx-get="/request1" hx-target="#result1">Request #1</button>
+        <button hx-post="/request2" hx-target="#result2">Request #2</button>
+    </div>
+    <div id="result1" style="margin-top: 1rem; font-weight: bold; color: blue;"></div>
+    <div id="result2" style="margin-top: 1rem; font-weight: bold; color: green;"></div>
+</body>
+</html>

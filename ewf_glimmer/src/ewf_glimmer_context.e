@@ -44,6 +44,35 @@ feature -- Access
 	status: INTEGER
 			-- The HTTP status code of the response.
 
+feature -- Context Variables
+
+	variables: detachable STRING_TABLE [ANY]
+			-- Context variables (similar to Hono variables)
+
+	set (a_name: READABLE_STRING_GENERAL; a_value: ANY)
+			-- Set a context variable.
+		local
+			l_vars: STRING_TABLE [ANY]
+		do
+			if attached variables as v then
+				v.force (a_value, a_name.to_string_32)
+			else
+				create l_vars.make (10)
+				variables := l_vars
+				l_vars.force (a_value, a_name.to_string_32)
+			end
+		ensure
+			variables_attached: variables /= Void
+		end
+
+	get (a_name: READABLE_STRING_GENERAL): detachable ANY
+			-- Get a context variable.
+		do
+			if attached variables as l_vars then
+				Result := l_vars.item (a_name.to_string_32)
+			end
+		end
+
 feature -- Request Queries
 
 	param (a_name: READABLE_STRING_GENERAL): detachable STRING_32
@@ -179,6 +208,11 @@ feature -- Response Rendering
 		local
 			l_html: STRING_32
 		do
+			if attached variables as l_vars then
+				across l_vars as v loop
+					a_template.set_variable (v.key, v.item)
+				end
+			end
 			l_html := a_template.render (a_template_text)
 			apply_htmx_headers (a_template, headers)
 			if a_template.has_contract_violation and then attached a_template.last_contract_violation as l_violation then
@@ -198,6 +232,11 @@ feature -- Response Rendering
 		local
 			l_html: STRING_32
 		do
+			if attached variables as l_vars then
+				across l_vars as v loop
+					a_template.set_variable (v.key, v.item)
+				end
+			end
 			l_html := a_template.render_file (a_file_path)
 			apply_htmx_headers (a_template, headers)
 			if a_template.has_contract_violation and then attached a_template.last_contract_violation as l_violation then
