@@ -1,0 +1,10 @@
+<div id="progress-container"
+    hx-get="/progress"
+    hx-trigger="{{if isIncomplete}}load delay:1s{{end}}"
+    hx-swap="outerHTML"
+    role="progressbar"
+    aria-valuenow="{percentComplete}">
+    
+    <div id="progress-text">{percentComplete}%</div>
+    <div id="progress-bar" style="width: {percentComplete}%"></div>
+</div>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polling Examples</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; }
+        .section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc; }
+        
+        #progress-container {
+            background-color: lightgray;
+            border: 2px solid black;
+            height: 2rem;
+            width: 50rem;
+            position: relative;
+        }
+        #progress-text {
+            color: black;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #progress-bar {
+            background-color: green;
+            height: 100%;
+            width: 0%;
+            transition: width 1s linear;
+        }
+        #reset-btn { margin-top: 1rem; }
+    </style>
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+</head>
+<body>
+    <h1>Polling Examples</h1>
+    
+    <div class="section">
+        <h2>Fixed-Rate Polling (Scoreboard)</h2>
+        <div style="font-size: 2rem; font-weight: bold;" hx-get="/score" hx-trigger="load, every 5s">
+            Loading score...
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>Load Polling (Progress Bar)</h2>
+        <div hx-get="/progress-bar" hx-trigger="load"></div>
+        <button id="reset-btn" hx-get="/progress" hx-target="#progress-container" hx-swap="outerHTML">
+            Reset
+        </button>
+    </div>
+</body>
+</html>

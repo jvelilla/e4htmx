@@ -5,13 +5,13 @@ note
     date: "$Date$"
     revision: "$Revision$"
 class
-    HTMX_BOOSTING
+    HTMX_polling
 inherit
     WSF_LAUNCHABLE_SERVICE
         redefine
             initialize
         end
-    APPLICATION_LAUNCHER [HTMX_BOOSTING_EXECUTION]
+    APPLICATION_LAUNCHER [HTMX_polling_EXECUTION]
 
 create
     make_and_launch

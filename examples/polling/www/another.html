@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🌿 Another Boosted Page</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="another.css" />
+  <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+  <script src="another.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Another Boosted Page</h1>
+      <p>Observe how the styles morphed seamlessly without full browser reload!</p>
+    </header>
+
+    <main class="card">
+      <h2>CSS & JS Integration Demo</h2>
+      <p>
+        When navigating via <code>hx-boost</code>, HTMX loads the new page, detects the new stylesheet <code>another.css</code> and the script <code>another.js</code>, and merges/evaluates them dynamically:
+      </p>
+      <ul style="list-style-type: none; padding: 0; margin-bottom: 1.5rem;">
+        <li style="margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.95rem;">
+          <strong style="color: var(--accent);">✦ Color Morphing:</strong> The buttons and card glow dynamically shifted to emerald green via <code>another.css</code> variable overrides.
+        </li>
+        <li style="margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.95rem;">
+          <strong style="color: var(--accent);">✦ Script Execution:</strong> The script <code>another.js</code> was parsed and immediately popped up the toast notification at the top-right of your screen.
+        </li>
+      </ul>
+
+      <div class="nav-group">
+        <a href="index.html" class="btn-card">
+          <div>
+            <h3>Back Home (Standard)</h3>
+            <p>Return to the main page using standard navigation, initiating a full reload.</p>
+          </div>
+          <span class="badge">No Boost</span>
+        </a>
+
+        <a href="index.html" hx-boost="true" class="btn-card">
+          <div>
+            <h3>Back Home (Boosted)</h3>
+            <p>Return to the main page using boosted navigation, smoothly swapping back to the indigo theme.</p>
+          </div>
+          <span class="badge">hx-boost="true"</span>
+        </a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
