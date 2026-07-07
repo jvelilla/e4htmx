@@ -41,6 +41,25 @@ feature -- HTMX Response Helper
 			end
 		end
 
+feature -- Security Response Helper
+
+	apply_security_headers (h: HTTP_HEADER; a_csp: detachable READABLE_STRING_8; a_hsts_max_age: INTEGER_64)
+			-- Apply common security headers to EWF header `h`.
+			-- `a_csp` is the Content-Security-Policy value. If Void, it is not set.
+			-- `a_hsts_max_age` is the max-age for Strict-Transport-Security in seconds. If <= 0, it is not set.
+		do
+			if a_csp /= Void and then not a_csp.is_empty then
+				h.put_header_key_value ("Content-Security-Policy", a_csp)
+			end
+			if a_hsts_max_age > 0 then
+				h.put_header_key_value ("Strict-Transport-Security", "max-age=" + a_hsts_max_age.out + "; includeSubDomains")
+			end
+			-- Prevent MIME-type sniffing
+			h.put_header_key_value ("X-Content-Type-Options", "nosniff")
+			-- Prevent clickjacking
+			h.put_header_key_value ("X-Frame-Options", "DENY")
+		end
+
 feature {NONE} -- Internal Helpers
 
 	meta_string (req: WSF_REQUEST; a_name: READABLE_STRING_8): detachable READABLE_STRING_32
