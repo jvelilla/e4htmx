@@ -1,0 +1,45 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Alpine Score Keeper</title>
+<link rel="stylesheet" href="score-keeper.css" />
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+const getData = () => ({
+    team1: {name: 'Chiefs', score: 25},
+    team2: {name: '49ers', score: 22},
+    color(like) {
+        return like ? 'red' : 'white';
+    },
+    heart(like) {
+        return like ? '❤️' : '🤍';
+    },
+    report() {
+        const s1 = Number(this.team1.score);
+        const s2 = Number(this.team2.score);
+        return s1 > s2
+            ? `The ${this.team1.name} are winning.`
+            : s2 > s1
+            ? `The ${this.team2.name} are winning.`
+            : "The score is tied.";
+    },
+});
+</script>
+</head>
+<body>
+<main class="column" x-data="getData">
+    <div id="report" x-text="report"></div>
+    <section class="column team" :style="`border-color: ${color(like)}`" x-data="{like: false}">
+        <label>Team <input type="text" x-model="team1.name" /></label>
+        <label>Score <input type="number" x-model="team1.score" /></label>
+        <button @click="like = !like" x-text="heart(like)"></button>
+    </section>
+
+    <section class="column team" :style="`border-color: ${color(like)}`" x-data="{like: false}">
+        <label>Team <input type="text" x-model="team2.name" /></label>
+        <label>Score <input type="number" x-model="team2.score" /></label>
+        <button @click="like = !like" x-text="heart(like)"></button>
+    </section>
+</main>
+</body>
+</html>
