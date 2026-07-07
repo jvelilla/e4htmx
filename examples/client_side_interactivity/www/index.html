@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Side Interactivity with Alpine and _hyperscript</title>
+    <!-- Load HTMX (optional here, but standard for the framework) -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <!-- Load Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Load _hyperscript -->
+    <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+    
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            background-color: #f9f9f9;
+        }
+        .temp-display {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Client-Side Interactivity</h1>
+    <p>This example demonstrates building a temperature slider component using Alpine.js and _hyperscript. Both versions change color dynamically based on the temperature: Blue (< 32), Red (>= 85), Green (otherwise).</p>
+    <p>We also have the <strong>Score Keeper</strong> example from the book available in two versions:</p>
+    <ul>
+        <li><a href="alpine-score-keeper.html">Alpine.js Score Keeper</a></li>
+        <li><a href="hyperscript-score-keeper.html">_hyperscript Score Keeper</a></li>
+    </ul>
+
+    <!-- Alpine.js Implementation -->
+    <div class="container" x-data="{ temp: 50, color() { if(this.temp < 32) return 'blue'; if(this.temp >= 85) return 'red'; return 'green'; } }">
+        <h2>Alpine.js Version</h2>
+        <label for="alpine-slider">Temperature:</label>
+        <input id="alpine-slider" type="range" min="0" max="100" x-model="temp">
+        
+        <div class="temp-display" :style="`color: ${color()}`">
+            <span x-text="temp"></span> &deg;
+        </div>
+    </div>
+
+    <!-- _hyperscript Implementation -->
+    <div class="container">
+        <h2>_hyperscript Version</h2>
+        <label for="hs-slider">Temperature:</label>
+        <input id="hs-slider" type="range" min="0" max="100" value="50"
+            _="on input 
+               set value to my value as Int
+               put value into the next <span/>
+               if value < 32 then
+                   set the color of the next <div/> to 'blue'
+               else if value >= 85 then
+                   set the color of the next <div/> to 'red'
+               else
+                   set the color of the next <div/> to 'green'
+               end">
+        
+        <div class="temp-display" style="color: green">
+            <span>50</span> &deg;
+        </div>
+    </div>
+
+</body>
+</html>

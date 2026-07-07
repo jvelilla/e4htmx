@@ -1,0 +1,86 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<title>_hyperscript Score Keeper</title>
+<link rel="stylesheet" href="score-keeper.css" />
+<script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+<script type="text/hyperscript">
+def color(team)
+    if team.like return 'red' end
+    return 'white'
+end
+
+def heart(team)
+    if team.like return '❤️' end
+    return '🤍'
+end
+
+def report()
+    if the score of $team1 is greater than the score of $team2
+        set text to `The ${$team1.name} are winning.`
+    else if the score of $team2 is greater than the score of $team1
+        set text to `The ${$team2.name} are winning.`
+    else
+        set text to 'The score is tied.'
+    end
+    set the textContent of #report to text
+end
+</script>
+</head>
+<body _="init
+    set $team1 to {name: 'Chiefs', like: false, score: 25}
+    set $team2 to {name: '49ers', like: false, score: 22}
+">
+<main class="column">
+    <div id="report" _="init report()"></div>
+
+    <section class="column team">
+        <label>
+            Team
+            <input type="text" _="
+                init set my value to $team1.name
+                on change set $team1.name to my value then report()
+            " />
+        </label>
+        <label>
+            Score
+            <input type="number" _="
+                init set my value to $team1.score
+                on change set $team1.score to my value then report()
+            " />
+        </label>
+        <button _="
+            init set my textContent to heart($team1)
+            on click
+                set $team1.like to not $team1.like
+                set *border-color of closest <section/> to color($team1)
+                set my textContent to heart($team1)
+        "></button>
+    </section>
+
+    <section class="column team">
+        <label>
+            Team
+            <input type="text" _="
+                init set my value to $team2.name
+                on change set $team2.name to my value then report()
+            " />
+        </label>
+        <label>
+            Score
+            <input type="number" _="
+                init set my value to $team2.score
+                on change set $team2.score to my value then report()
+            " />
+        </label>
+        <button _="
+            init set my textContent to heart($team2)
+            on click
+                set $team2.like to not $team2.like
+                set *border-color of closest <section/> to color($team2)
+                set my textContent to heart($team2)
+        "></button>
+    </section>
+</main>
+</body>
+</html>
