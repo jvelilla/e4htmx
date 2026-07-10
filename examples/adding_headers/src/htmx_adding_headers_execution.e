@@ -26,9 +26,12 @@ feature -- Filter
             -- Setup `filter'
         local
             f: like filter
+            csp: WSF_CSP_FILTER
         do
             create {WSF_CORS_FILTER} f
-            f.set_next (create {WSF_LOGGING_FILTER})
+            create csp.make ("report-uri /csp-report; default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' https://images.unsplash.com")
+            csp.set_next (create {WSF_LOGGING_FILTER})
+            f.set_next (csp)
             filter.append (f)
         end
 
@@ -44,6 +47,7 @@ feature -- Router
             
             map_uri_agent ("/request1", agent handle_request1, router.methods_get)
             map_uri_agent ("/request2", agent handle_request2, router.methods_post)
+            map_uri_agent ("/csp-report", agent handle_csp_report, router.methods_post)
             
             create www.make_with_path (document_root)
             www.set_directory_index (<<"index.html">>)
@@ -91,6 +95,15 @@ feature -- Events
         do
             create c.make (req, res)
             c.text ("Eiffel Web Framework: 24.11")
+        end
+
+    handle_csp_report (req: WSF_REQUEST; res: WSF_RESPONSE)
+        local
+            c: EWF_GLIMMER_CONTEXT
+        do
+            print ("%NCSP Violation reported to /csp-report!%N")
+            create c.make (req, res)
+            c.text ("Logged")
         end
 
     execute_not_found (uri: READABLE_STRING_8; req: WSF_REQUEST; res: WSF_RESPONSE)
