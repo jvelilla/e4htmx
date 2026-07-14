@@ -20,6 +20,7 @@ feature {NONE} -- Initialization
 			create sections.make (5)
 			create trigger_events.make (5)
 			trigger_events.compare_objects
+			create trigger_event_payloads.make (5)
 			create filter_registry.make
 			create helper_registry.make (10)
 			helper_registry.compare_objects
@@ -327,6 +328,9 @@ feature -- HTMX Metadata
 	trigger_events: ARRAYED_LIST [STRING_32]
 			-- Events to include in HX-Trigger response header
 
+	trigger_event_payloads: STRING_TABLE [STRING_32]
+			-- Optional JSON payloads for trigger events
+
 	push_url: detachable STRING_32
 			-- URL to push into the browser history (HX-Push-Url)
 
@@ -341,19 +345,54 @@ feature -- HTMX Metadata
 			trigger_added: trigger_events.has (event_name.to_string_32)
 		end
 
+	add_trigger_with_detail (event_name: READABLE_STRING_GENERAL; detail_json: READABLE_STRING_GENERAL)
+			-- Register an HTMX event with a JSON detail payload
+		local
+			l_event: STRING_32
+			l_json: STRING_32
+		do
+			l_event := event_name.to_string_32
+			l_json := detail_json.to_string_32
+			if not trigger_events.has (l_event) then
+				trigger_events.extend (l_event)
+			end
+			trigger_event_payloads.force (l_json, l_event)
+		ensure
+			trigger_added: trigger_events.has (event_name.to_string_32)
+			payload_added: trigger_event_payloads.has (event_name.to_string_32)
+		end
+
 	htmx_trigger_header: STRING_32
-			-- Serialise `trigger_events' as a comma-separated list of event names for the HX-Trigger header.
+			-- Serialise `trigger_events' for the HX-Trigger header.
 		local
 			l_first: BOOLEAN
 		do
 			create Result.make (100)
-			l_first := True
-			across trigger_events as event loop
-				if not l_first then
-					Result.append (", ")
+			if trigger_event_payloads.is_empty then
+				l_first := True
+				across trigger_events as event loop
+					if not l_first then
+						Result.append (", ")
+					end
+					Result.append (event.item)
+					l_first := False
 				end
-				Result.append (event.item)
-				l_first := False
+			else
+				Result.append ("{")
+				l_first := True
+				across trigger_events as event loop
+					if not l_first then
+						Result.append (", ")
+					end
+					Result.append ("%"" + event.item + "%": ")
+					if trigger_event_payloads.has (event.item) and then attached trigger_event_payloads.item (event.item) as l_payload then
+						Result.append (l_payload)
+					else
+						Result.append ("null")
+					end
+					l_first := False
+				end
+				Result.append ("}")
 			end
 		end
 
@@ -393,8 +432,10 @@ feature -- HTMX Metadata
 			-- Clear registered trigger events
 		do
 			trigger_events.wipe_out
+			trigger_event_payloads.wipe_out
 		ensure
 			trigger_events_cleared: trigger_events.is_empty
+			trigger_event_payloads_cleared: trigger_event_payloads.is_empty
 		end
 
 	clear_htmx_metadata
