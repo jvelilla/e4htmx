@@ -155,6 +155,71 @@ feature -- Response Commands
 			put_header (Hx_replace_url, a_url)
 		end
 
+	set_redirect (a_url: READABLE_STRING_GENERAL)
+			-- Set the HX-Redirect header.
+		do
+			put_header (Hx_redirect, a_url)
+		end
+
+	set_refresh (a_refresh: BOOLEAN)
+			-- Set the HX-Refresh header.
+		do
+			if a_refresh then
+				put_header (Hx_refresh, "true")
+			else
+				put_header (Hx_refresh, "false")
+			end
+		end
+
+	set_retarget (a_target: READABLE_STRING_GENERAL)
+			-- Set the HX-Retarget header.
+		do
+			put_header (Hx_retarget, a_target)
+		end
+
+	set_reswap (a_swap: READABLE_STRING_GENERAL)
+			-- Set the HX-Reswap header.
+		do
+			put_header (Hx_reswap, a_swap)
+		end
+
+	set_reselect (a_selector: READABLE_STRING_GENERAL)
+			-- Set the HX-Reselect header.
+		do
+			put_header (Hx_reselect, a_selector)
+		end
+
+	set_location (a_location: READABLE_STRING_GENERAL)
+			-- Set the HX-Location header.
+		do
+			put_header (Hx_location, a_location)
+		end
+
+	set_trigger_after_settle (a_event: READABLE_STRING_GENERAL)
+			-- Set the HX-Trigger-After-Settle header.
+		do
+			put_header (Hx_trigger_after_settle, a_event)
+		end
+
+	set_trigger_after_swap (a_event: READABLE_STRING_GENERAL)
+			-- Set the HX-Trigger-After-Swap header.
+		do
+			put_header (Hx_trigger_after_swap, a_event)
+		end
+
+	sse_event (a_event: READABLE_STRING_GENERAL; a_data: READABLE_STRING_GENERAL)
+			-- Send an SSE event format (must be used with text/event-stream content type).
+		local
+			l_body: STRING_8
+		do
+			create l_body.make_empty
+			if not a_event.is_empty then
+				l_body.append ("event: " + a_event.to_string_8 + "%N")
+			end
+			l_body.append ("data: " + a_data.to_string_8 + "%N%N")
+			body (l_body)
+		end
+
 feature -- Response Rendering
 
 	html (a_html: READABLE_STRING_GENERAL)
@@ -286,9 +351,17 @@ feature -- Request Method Helpers
 feature {NONE} -- Constants
 
 	Hx_trigger: STRING = "HX-Trigger"
+	Hx_trigger_after_settle: STRING = "HX-Trigger-After-Settle"
+	Hx_trigger_after_swap: STRING = "HX-Trigger-After-Swap"
 	Hx_target: STRING = "HX-Target"
 	Hx_push_url: STRING = "HX-Push-Url"
 	Hx_replace_url: STRING = "HX-Replace-Url"
+	Hx_redirect: STRING = "HX-Redirect"
+	Hx_refresh: STRING = "HX-Refresh"
+	Hx_retarget: STRING = "HX-Retarget"
+	Hx_reswap: STRING = "HX-Reswap"
+	Hx_reselect: STRING = "HX-Reselect"
+	Hx_location: STRING = "HX-Location"
 	Content_type_json: STRING = "application/json"
 	Method_patch: STRING = "PATCH"
 	Error_div_start: STRING = "<div class=%"error%">"

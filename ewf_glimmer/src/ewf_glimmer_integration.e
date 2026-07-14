@@ -60,6 +60,26 @@ feature -- Security Response Helper
 			h.put_header_key_value ("X-Frame-Options", "DENY")
 		end
 
+feature -- CSRF Security
+
+	csrf_token_from_request (req: WSF_REQUEST): detachable READABLE_STRING_32
+			-- Extract CSRF token from request (e.g. from X-CSRF-Token header or form parameter)
+		do
+			if attached meta_string (req, "HTTP_X_CSRF_TOKEN") as l_header then
+				Result := l_header
+			elseif attached {WSF_STRING} req.form_parameter ("csrf_token") as l_form then
+				Result := l_form.value
+			end
+		end
+
+	verify_csrf_token (req: WSF_REQUEST; a_expected_token: READABLE_STRING_GENERAL): BOOLEAN
+			-- Verify the CSRF token from the request against the expected token.
+		do
+			if attached csrf_token_from_request (req) as l_token then
+				Result := l_token.same_string (a_expected_token.to_string_32)
+			end
+		end
+
 feature {NONE} -- Internal Helpers
 
 	meta_string (req: WSF_REQUEST; a_name: READABLE_STRING_8): detachable READABLE_STRING_32
